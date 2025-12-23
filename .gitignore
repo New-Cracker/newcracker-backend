@@ -38,4 +38,4 @@ out/
 
 mysql-init/**
 docker
-resource/application-test.yaml
+resource/**
