@@ -1,6 +1,11 @@
+# 빌드 스테이지
+FROM gradle:8.14.3-jdk21 AS build
+WORKDIR /app
+COPY . .
+RUN gradle clean build -x test
+
+# 실행 스테이지
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-ARG JAR_FILE=build/libs/*SNAPSHOT.jar
-COPY ${JAR_FILE} app.jar
-
+COPY --from=build /app/build/libs/*SNAPSHOT.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
