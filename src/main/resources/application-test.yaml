@@ -1,0 +1,17 @@
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  jwt:
+    secret: dGhpc19pc19uZXdfY3JhY2tlcl9qd3Rfc2VjcmV0X2tleV8=
+
+  datasource:
+    url: jdbc:mysql://localhost:3006/newcracker
+    username: root
+    password: '@1234'
+
+  jpa:
+    hibernate:
+      ddl-auto: update

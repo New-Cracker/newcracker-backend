@@ -1,0 +1,16 @@
+spring:
+  data:
+    redis:
+      url: ${REDIS_URL}
+      host: ${REDIS_HOST}
+      password: ${REDIS_PASSWORD}
+      port: ${REDIS_PORT}
+      
+  datasource:
+    url: ${MYSQL_URL}
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+
+  jwt:
+    secret: ${JWT_SECRET}
+
