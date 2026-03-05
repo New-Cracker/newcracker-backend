@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SignupDto } from './dto/signup-request.dto';
+import { SignupRequestDto } from './dto/signup-request.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -16,7 +16,7 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
-  async signup(request: SignupDto): Promise<string> {
+  async signup(request: SignupRequestDto): Promise<string> {
     const { email, password, username } = request;
 
     const existingUser = await this.userRepository.findOne({
