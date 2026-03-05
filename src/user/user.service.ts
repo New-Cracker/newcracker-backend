@@ -1,5 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { SignupDto } from './dto/signup.dto';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { SignupDto } from './dto/signup-request.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -12,8 +16,8 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
-  async signup(dto: SignupDto): Promise<string> {
-    const { email, password, username } = dto;
+  async signup(request: SignupDto): Promise<string> {
+    const { email, password, username } = request;
 
     const existingUser = await this.userRepository.findOne({
       where: { email: email },
@@ -34,6 +38,20 @@ export class UserService {
     await this.userRepository.save(user);
 
     return '회원가입이 완료되었습니다.';
+  }
+
+  async findByEmail(email: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
+    }
+
+    return user;
   }
 
   findAll() {
