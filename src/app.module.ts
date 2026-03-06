@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { JwtAuthModule } from './jwt/jwt.module';
 import appConfig from './config/app.config';
 
 @Module({
@@ -22,17 +21,16 @@ import appConfig from './config/app.config';
         url: config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: true, // 개발용만 true
-        ssl: {
-          rejectUnauthorized: false,
-        },
+        ssl:
+          config.get('NODE_ENV') === 'prod'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
 
     UserModule,
 
     AuthModule,
-
-    JwtAuthModule,
   ],
 })
 export class AppModule {}
