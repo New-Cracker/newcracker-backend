@@ -5,6 +5,8 @@ import bcrypt from 'node_modules/bcryptjs';
 import { UserService } from 'src/user/user.service';
 import { TokenService } from './token.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { RefreshResponseDto } from '../dto/refresh-response.dto';
+import { RefreshRequestDto } from '../dto/refresh-request.dto';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +30,30 @@ export class AuthService {
 
     const tokens = await this.tokenService.generateTokens(user);
 
+    await this.refreshTokenService.save(user, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  async refresh(
+    accessToken: string,
+    refreshRequestDto: RefreshRequestDto,
+  ): Promise<RefreshResponseDto> {
+    const { refreshToken } = refreshRequestDto;
+
+    // 1 accessToken에서 userId 추출
+    const payload = await this.tokenService.verifyAccessToken(accessToken);
+
+    // 2 refreshToken 검증
+    const user = await this.refreshTokenService.validateRefreshToken(
+      payload.sub,
+      refreshToken,
+    );
+
+    // 3 새 토큰 발급
+    const tokens = await this.tokenService.generateTokens(user);
+
+    // 4 refreshToken DB 갱신
     await this.refreshTokenService.save(user, tokens.refreshToken);
 
     return tokens;

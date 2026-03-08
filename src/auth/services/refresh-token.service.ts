@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { Repository } from 'typeorm';
@@ -34,5 +34,27 @@ export class RefreshTokenService {
 
   async remove(userId: number) {
     await this.refreshTokenRepository.delete({ user: { id: userId } });
+  }
+
+  async validateRefreshToken(
+    userId: number,
+    refreshToken: string,
+  ): Promise<User> {
+    const storedToken = await this.refreshTokenRepository.findOne({
+      where: { user: { id: userId } },
+      relations: ['user'],
+    });
+
+    if (!storedToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    const isMatch = await bcrypt.compare(refreshToken, storedToken.token);
+
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    return storedToken.user;
   }
 }
