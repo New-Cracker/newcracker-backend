@@ -15,6 +15,12 @@ async function bootstrap() {
     }),
   );
 
+  app.enableCors({
+    origin: true, // 허용할 프론트엔드 주소
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true, // 쿠키/인증 헤더 허용
+  });
+
   const apiDocumentOptions = new SwaggerCofig().initializeOptions();
   const apiDocument = SwaggerModule.createDocument(app, apiDocumentOptions);
   SwaggerModule.setup('api/v1/docs', app, apiDocument);

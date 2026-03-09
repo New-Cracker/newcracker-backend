@@ -32,10 +32,6 @@ export class RefreshTokenService {
     await this.refreshTokenRepository.save(existingRefreshToken);
   }
 
-  async remove(userId: number) {
-    await this.refreshTokenRepository.delete({ user: { id: userId } });
-  }
-
   async validateRefreshToken(
     userId: number,
     refreshToken: string,

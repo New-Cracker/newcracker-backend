@@ -11,7 +11,7 @@ export class TokenService {
     const payload = { sub: user.id, email: user.email };
 
     const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '5m',
+      expiresIn: '1h', // prod: 5m
     });
 
     const refreshToken = await this.jwtService.signAsync(payload, {
