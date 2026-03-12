@@ -1,14 +1,15 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SignupRequestDto } from './dto/signup-request.dto';
 // import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
-import bcrypt from 'bcryptjs';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UpdateUserRequestDto } from './dto/update-user-request.dto';
+import { UpdateUserResponseDto } from './dto/update-user-response.dto';
 
 @Injectable()
 export class UserService {
@@ -16,28 +17,17 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
-  async signup(request: SignupRequestDto): Promise<string> {
-    const { email, password, username } = request;
-
-    const existingUser = await this.userRepository.findOne({
-      where: { email: email },
-    });
-
-    if (existingUser) {
-      throw new ConflictException('이미 존재하는 이메일입니다.');
+  async create(email: string, hashedPassword: string): Promise<User> {
+    if (!email && !hashedPassword) {
+      throw new UnauthorizedException('회원가입을 진행할 수 없습니다.');
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = this.userRepository.create({
-      username: username,
+      username: 'new cracker',
       email: email,
       password: hashedPassword,
     });
 
-    await this.userRepository.save(user);
-
-    return '회원가입이 완료되었습니다.';
+    return await this.userRepository.save(user);
   }
 
   async findByEmail(email: string): Promise<User> {
@@ -54,17 +44,41 @@ export class UserService {
     return user;
   }
 
+  async findExistingUser(email: string) {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('이미 존재하는 이메일입니다.');
+    }
+  }
+
   // findAll() {
   //   return `This action retsdfsdfurns all user`;
   // }
 
-  // findOne(id: number) {
-  //   return `This action returns a #${id} user`;
-  // }
+  async findById(id: number): Promise<User> {
+    const user = await this.userRepository.findOneBy({ id: id });
 
-  // update(id: number, updateUserDto: UpdateUserDto) {
-  //   return `This action updates a #${id} user`;
-  // }
+    if (!user) {
+      throw new NotFoundException('존재하지 않는 유저입니다.');
+    }
+
+    return user;
+  }
+
+  async update(
+    id: number,
+    updateUserDto: UpdateUserRequestDto,
+  ): Promise<UpdateUserResponseDto> {
+    const user = await this.findById(id);
+
+    Object.assign(user, updateUserDto);
+
+    const updatedUser = await this.userRepository.save(user);
+    return UpdateUserResponseDto.from(updatedUser);
+  }
 
   // remove(id: number) {
   //   return `This action removes a #${id} user`;

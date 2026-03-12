@@ -1,4 +1,5 @@
 import { RefreshToken } from 'src/auth/entities/refresh-token.entity';
+import { Category } from 'src/news/entities/enum/category.enum';
 import {
   BaseEntity,
   Column,
@@ -20,6 +21,9 @@ export class User extends BaseEntity {
 
   @Column({ nullable: false })
   password: string;
+
+  @Column({ nullable: true })
+  category: Category;
 
   @Column({ default: false, nullable: false })
   isDeleted: boolean;

@@ -1,24 +1,27 @@
 import {
   Controller,
   // Get,
-  Post,
+  // Post,
   Body,
+  Patch,
+  UseGuards,
   // Patch,
   // Param,
   // Delete,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { SignupRequestDto } from './dto/signup-request.dto';
-// import { UpdateUserDto } from './dto/update-user.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { UpdateUserRequestDto } from './dto/update-user-request.dto';
+import type { JwtPayload } from 'src/auth/interfaces/jwt-payload.interface';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 @Controller('user')
+@ApiTags('user')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
-  @Post('/signup')
-  signup(@Body() createUserDto: SignupRequestDto) {
-    return this.userService.signup(createUserDto);
-  }
 
   // @Get()
   // findAll() {
@@ -30,10 +33,14 @@ export class UserController {
   //   return this.userService.findOne(+id);
   // }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-  //   return this.userService.update(+id, updateUserDto);
-  // }
+  @Patch('/me')
+  @UseGuards(JwtAuthGuard)
+  update(
+    @CurrentUser() user: JwtPayload,
+    @Body() updateUserDto: UpdateUserRequestDto,
+  ) {
+    return this.userService.update(user.sub, updateUserDto);
+  }
 
   // @Delete(':id')
   // remove(@Param('id') id: string) {

@@ -1,12 +1,13 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginRequestDto } from '../dto/login-request.dto';
-import { LoginResponseDto } from '../dto/login-response.dto';
+import { TokenResponseDto } from '../dto/token-response.dto';
 import bcrypt from 'node_modules/bcryptjs';
 import { UserService } from 'src/user/user.service';
 import { TokenService } from './token.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { RefreshResponseDto } from '../dto/refresh-response.dto';
 import { RefreshRequestDto } from '../dto/refresh-request.dto';
+import { SignupRequestDto } from 'src/user/dto/signup-request.dto';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,23 @@ export class AuthService {
     private readonly userService: UserService,
   ) {}
 
-  async login(request: LoginRequestDto): Promise<LoginResponseDto> {
+  async signup(request: SignupRequestDto): Promise<TokenResponseDto> {
+    const { email, password } = request;
+
+    await this.userService.findExistingUser(email);
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await this.userService.create(email, hashedPassword);
+
+    const tokens = await this.tokenService.generateTokens(user);
+
+    await this.refreshTokenService.save(user, tokens.refreshToken);
+
+    return tokens;
+  }
+
+  async login(request: LoginRequestDto): Promise<TokenResponseDto> {
     const { email, password } = request;
 
     const user = await this.userService.findByEmail(email);
