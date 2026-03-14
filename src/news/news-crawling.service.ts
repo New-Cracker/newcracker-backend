@@ -1,119 +1,135 @@
-import { Injectable, Logger } from '@nestjs/common';
+// news/news-crawling.service.ts
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import { Category } from './entities/enum/category.enum';
-import { News } from './entities/news.entity';
-import { Company } from './entities/company.entity';
-import { NaverNewsItem } from './interfaces/naver-news-item.interface';
-import { NaverNewsResponse } from './interfaces/naver-news-response.interface';
-import { NewsService } from './news.service';
-import { CompanyService } from './company.service';
-
-// 카테고리별 검색 키워드 매핑
-const CATEGORY_KEYWORDS: { category: Category; keyword: string }[] = [
-  { category: Category.POLITICS, keyword: '정치' },
-  { category: Category.ECONOMY, keyword: '경제' },
-  { category: Category.SOCIETY, keyword: '사회' },
-  { category: Category.LIFE, keyword: '생활/문화' },
-  { category: Category.IT_SCIENCE, keyword: 'IT/과학' },
-  { category: Category.WORLD, keyword: '세계' },
-];
+import { NewsItem } from './interfaces/news-item.interface';
+import { NewsResponse } from './interfaces/news-response.interface';
 
 @Injectable()
 export class NewsCrawlingService {
-  // private readonly logger = new Logger(NewsCrawlingService.name);
-  // constructor(
-  //   private readonly httpService: HttpService,
-  //   private readonly newsService: NewsService,
-  //   private readonly companyService: CompanyService,
-  // ) {}
-  // // 매 10분마다 실행
-  // @Cron(CronExpression.EVERY_10_MINUTES)
-  // async crawlAllCategories() {
-  //   for (const { category, keyword } of CATEGORY_KEYWORDS) {
-  //     await this.crawlByCategory(category, keyword);
-  //   }
-  // }
-  // private async crawlByCategory(category: Category, keyword: string) {
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {
+    this.clientId = this.configService.get<string>('NAVER_CLIENT_ID') ?? '';
+    this.clientSecret =
+      this.configService.get<string>('NAVER_CLIENT_SECRET') ?? '';
+  }
+
+  // async fetchNewsByKeyword(keyword: string): Promise<NewsItem[]> {
   //   try {
-  //     const items = await this.fetchNaverNews(keyword);
-  //     for (const item of items) {
-  //       //파싱
-  //       const cleanTitle = item.title.replace(/<[^>]*>/g, '');
-  //       const cleanSummary = item.description.replace(/<[^>]*>/g, '');
-  //       const companyName = this.extractCompanyName(item.originallink);
-  //       const company = await this.companyService.findOrCreate(
-  //         companyName,
-  //         item.originallink,
-  //       );
-  //     }
-  //   } catch (error) {
-  //     const message =
-  //       error instanceof Error ? error.message : '알 수 없는 오류';
-  //     this.logger.error(`[${category}] 크롤링 실패: ${message}`);
-  //   }
-  // }
-  // private async fetchNaverNews(keyword: string): Promise<NaverNewsItem[]> {
-  //   const encodedQuery = encodeURIComponent(keyword);
-  //   const response = await firstValueFrom(
-  //     this.httpService.get<NaverNewsResponse>(
-  //       `https://openapi.naver.com/v1/search/news?query=${encodedQuery}&display=100&sort=date`,
-  //       {
-  //         headers: {
-  //           'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
-  //           'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET,
+  //     const response = await firstValueFrom(
+  //       this.httpService.get<NewsResponse>(
+  //         'https://openapi.naver.com/v1/search/news.json',
+  //         {
+  //           params: { query: keyword, display: 10, sort: 'date' },
+  //           headers: {
+  //             'X-Naver-Client-Id': this.clientId,
+  //             'X-Naver-Client-Secret': this.clientSecret,
+  //           },
   //         },
-  //       },
-  //     ),
-  //   );
-  //   return response.data.items;
-  // }
-  // private async saveNews(item: NaverNewsItem, category: Category) {
-  //   // 중복 방지: 같은 링크 있으면 스킵
-  //   const exists = await this.newsRepository.findOne({
-  //     where: { link: item.originallink },
-  //   });
-  //   if (exists) return;
-  //   // 언론사명 추출 (originallink 도메인에서 파싱)
-  //   const companyName = this.extractCompanyName(item.originallink);
-  //   const company = await this.findOrCreateCompany(
-  //     companyName,
-  //     item.originallink,
-  //   );
-  //   // HTML 태그 제거 (<b>, </b> 등)
-  //   const cleanTitle = item.title.replace(/<[^>]*>/g, '');
-  //   const cleanSummary = item.description.replace(/<[^>]*>/g, '');
-  //   const news = this.newsRepository.create({
-  //     title: cleanTitle,
-  //     category,
-  //     company,
-  //     summary: cleanSummary,
-  //     link: item.originallink,
-  //     publicationDate: new Date(item.pubDate),
-  //   });
-  //   await this.newsRepository.save(news);
-  // }
-  // private extractCompanyName(url: string): string {
-  //   try {
-  //     const hostname = new URL(url).hostname; // ex) www.chosun.com
-  //     return hostname.replace('www.', ''); // ex) chosun.com
+  //       ),
+  //     );
+
+  //     // 각 뉴스 링크에서 og:image 파싱
+  //     const newsItems = await Promise.all(
+  //       response.data.items.map(async (item) => ({
+  //         ...item,
+  //         thumbnailUrl: await this.fetchThumbnail(item.link),
+  //       })),
+  //     );
+
+  //     return newsItems;
   //   } catch {
-  //     return '알 수 없음';
+  //     throw new InternalServerErrorException(
+  //       '네이버 뉴스 API 호출에 실패했습니다.',
+  //     );
   //   }
   // }
-  // private async findOrCreateCompany(
-  //   name: string,
-  //   url: string,
-  // ): Promise<Company> {
-  //   let company = await this.companyRepository.findOne({ where: { name } });
-  //   if (!company) {
-  //     const origin = new URL(url).origin; // ex) https://www.chosun.com
-  //     company = this.companyRepository.create({ name, homepageUrl: origin });
-  //     await this.companyRepository.save(company);
-  //   }
-  //   return company;
-  // }
+
+  async fetchLatestNews(): Promise<NewsItem[]> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<NewsResponse>(
+          'https://openapi.naver.com/v1/search/news.json',
+          {
+            params: {
+              query: '뉴스', // 전체 최신 뉴스
+              display: 10,
+              sort: 'date', // 최신순
+            },
+            headers: {
+              'X-Naver-Client-Id': this.clientId,
+              'X-Naver-Client-Secret': this.clientSecret,
+            },
+          },
+        ),
+      );
+
+      // 각 뉴스 링크에서 og:image 파싱
+      const newsItems = await Promise.all(
+        response.data.items.map(async (item) => ({
+          ...item,
+          thumbnailUrl: await this.fetchThumbnail(item.link),
+        })),
+      );
+
+      return newsItems;
+    } catch {
+      throw new InternalServerErrorException(
+        '네이버 뉴스 API 호출에 실패했습니다.',
+      );
+    }
+  }
+
+  private async fetchThumbnail(link: string): Promise<string> {
+    try {
+      console.log('요청 링크:', link);
+      const response = await firstValueFrom(
+        this.httpService.get<string>(link, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0', // 봇 차단 방지
+          },
+          responseType: 'text',
+        }),
+      );
+
+      const html = response.data;
+
+      const match =
+        /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i.exec(
+          html,
+        ) ??
+        /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i.exec(
+          html,
+        );
+
+      console.log('파싱 결과:', match?.[1]);
+
+      return match?.[1] ? this.decodeHtmlEntities(match[1]) : '';
+    } catch (error) {
+      console.log('에러 링크:', link);
+      console.log('에러:', error);
+      return ''; // 썸네일 파싱 실패 시 빈 값 반환
+    }
+  }
+
+  private decodeHtmlEntities(text: string): string {
+    return text
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      )
+      .replace(/&#(\d+);/g, (_, dec: string) =>
+        String.fromCharCode(parseInt(dec, 10)),
+      )
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
+  }
 }

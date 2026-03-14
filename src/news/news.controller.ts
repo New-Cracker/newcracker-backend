@@ -1,42 +1,29 @@
+// news/news.controller.ts
 import {
   Controller,
   Get,
-  Post,
-  Body,
-  Patch,
   Param,
-  Delete,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { NewsService } from './news.service';
-import { CreateNewsDto } from './dto/create-news.dto';
-import { UpdateNewsDto } from './dto/update-news.dto';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
+@ApiTags('news')
 @Controller('news')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard)
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
-  @Post()
-  create(@Body() createNewsDto: CreateNewsDto) {
-    return this.newsService.create(createNewsDto);
-  }
+  // @Get(':id')
+  // findOne(@Param('id', ParseIntPipe) id: number) {
+  //   return this.newsService.findById(id);
+  // }
 
   @Get()
-  findAll() {
-    return this.newsService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.newsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto) {
-    return this.newsService.update(+id, updateNewsDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.newsService.remove(+id);
+  findLatest() {
+    return this.newsService.findLatest();
   }
 }

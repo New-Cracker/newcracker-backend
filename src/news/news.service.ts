@@ -1,26 +1,36 @@
-import { Injectable } from '@nestjs/common';
-import { CreateNewsDto } from './dto/create-news.dto';
-import { UpdateNewsDto } from './dto/update-news.dto';
+// news/news.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { News } from './entities/news.entity';
+import { NewsResponseDto } from './dto/news-detail-response.dto';
+import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
+import { NewsCrawlingService } from './news-crawling.service';
 
 @Injectable()
 export class NewsService {
-  create(createNewsDto: CreateNewsDto) {
-    return 'This action adds a new news';
-  }
+  constructor(
+    @InjectRepository(News)
+    private readonly newsRepository: Repository<News>,
+    private readonly newsCrawlingService: NewsCrawlingService,
+  ) {}
 
-  findAll() {
-    return `This action returns all news`;
-  }
+  // async findById(id: number): Promise<NewsResponseDto> {
+  //   const news = await this.newsRepository.findOne({
+  //     where: { id },
+  //     relations: ['company'], // company 조인
+  //   });
 
-  findOne(id: number) {
-    return `This action returns a #${id} news`;
-  }
+  //   if (!news) throw new NotFoundException('존재하지 않는 뉴스입니다.');
 
-  update(id: number, updateNewsDto: UpdateNewsDto) {
-    return `This action updates a #${id} news`;
-  }
+  //   // 조회수 증가
+  //   await this.newsRepository.update(id, { viewCount: news.viewCount + 1 });
 
-  remove(id: number) {
-    return `This action removes a #${id} news`;
+  //   return NewsResponseDto.from(news);
+  // }
+
+  async findLatest(): Promise<LatestNewsResponseDto[]> {
+    const newsItems = await this.newsCrawlingService.fetchLatestNews();
+    return newsItems.map((item) => LatestNewsResponseDto.fromNaverItem(item));
   }
 }
