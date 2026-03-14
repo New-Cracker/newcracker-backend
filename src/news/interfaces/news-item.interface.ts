@@ -1,9 +1,14 @@
+import { Category } from '../entities/enum/category.enum';
+
 export interface NewsItem {
   title: string;
   link: string;
+  originallink: string;
   description: string;
   pubDate: string;
   thumbnailUrl: string;
+  category: Category;
+  companyName: string;
 }
 
 // 네이버 API 응답 (NewsResponse)

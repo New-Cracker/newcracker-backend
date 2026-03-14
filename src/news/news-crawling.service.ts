@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { NewsItem } from './interfaces/news-item.interface';
 import { NewsResponse } from './interfaces/news-response.interface';
+import { Category } from './entities/enum/category.enum';
 
 @Injectable()
 export class NewsCrawlingService {
@@ -75,6 +76,8 @@ export class NewsCrawlingService {
         response.data.items.map(async (item) => ({
           ...item,
           thumbnailUrl: await this.fetchThumbnail(item.link),
+          companyName: this.extractCompanyName(item.originallink),
+          category: Category.POLITICS,
         })),
       );
 
@@ -131,5 +134,14 @@ export class NewsCrawlingService {
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&apos;/g, "'");
+  }
+
+  private extractCompanyName(originallink: string): string {
+    try {
+      const url = new URL(originallink);
+      return url.hostname.replace('www.', '');
+    } catch {
+      return '';
+    }
   }
 }

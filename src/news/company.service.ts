@@ -21,8 +21,21 @@ export class CompanyService {
     return this.companyRepository.findOne({ where: { name } });
   }
 
-  async create(name: string, homepageUrl: string): Promise<Company> {
+  async findOrCreate(name: string, originallink: string): Promise<Company> {
+    const existing = await this.findByNameOrNull(name);
+    if (existing) return existing;
+
+    const homepageUrl = this.extractHomepageUrl(originallink);
     const company = this.companyRepository.create({ name, homepageUrl });
     return this.companyRepository.save(company);
+  }
+
+  private extractHomepageUrl(originallink: string): string {
+    try {
+      const url = new URL(originallink);
+      return `${url.protocol}//${url.hostname}`;
+    } catch {
+      return originallink;
+    }
   }
 }

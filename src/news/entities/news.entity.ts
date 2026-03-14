@@ -26,7 +26,7 @@ export class News {
   @Column({ nullable: false })
   summary: string;
 
-  @Column()
+  @Column({ nullable: true })
   aiSummary: string;
 
   @Column({ nullable: false })
