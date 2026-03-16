@@ -1,8 +1,8 @@
 export enum Category {
-  POLITICS,
-  ECONOMY,
-  SOCIETY,
-  LIFE,
-  IT_SCIENCE,
-  WORLD,
+  POLITICS = 'POLITICS',
+  ECONOMY = 'ECONOMY',
+  SOCIETY = 'SOCIETY',
+  LIFE = 'LIFE',
+  IT_SCIENCE = 'IT_SCIENCE',
+  WORLD = 'WORLD',
 }

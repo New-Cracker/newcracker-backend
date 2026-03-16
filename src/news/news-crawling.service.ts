@@ -71,14 +71,17 @@ export class NewsCrawlingService {
         ),
       );
 
-      // 각 뉴스 링크에서 og:image 파싱
       const newsItems = await Promise.all(
-        response.data.items.map(async (item) => ({
-          ...item,
-          thumbnailUrl: await this.fetchThumbnail(item.link),
-          companyName: this.extractCompanyName(item.originallink),
-          category: Category.POLITICS,
-        })),
+        response.data.items.map(async (item) => {
+          const { thumbnailUrl, companyName } = await this.fetchMetadata(
+            item.link,
+          );
+          const category = await this.categorizeNews(
+            item.title,
+            item.description,
+          );
+          return { ...item, thumbnailUrl, companyName, category };
+        }),
       );
 
       return newsItems;
@@ -89,21 +92,20 @@ export class NewsCrawlingService {
     }
   }
 
-  private async fetchThumbnail(link: string): Promise<string> {
+  private async fetchMetadata(
+    link: string,
+  ): Promise<{ thumbnailUrl: string; companyName: string }> {
     try {
-      console.log('요청 링크:', link);
       const response = await firstValueFrom(
         this.httpService.get<string>(link, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0', // 봇 차단 방지
-          },
+          headers: { 'User-Agent': 'Mozilla/5.0' },
           responseType: 'text',
         }),
       );
 
       const html = response.data;
 
-      const match =
+      const imageMatch =
         /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i.exec(
           html,
         ) ??
@@ -111,13 +113,22 @@ export class NewsCrawlingService {
           html,
         );
 
-      console.log('파싱 결과:', match?.[1]);
+      const siteNameMatch =
+        /<meta[^>]*property=["']og:site_name["'][^>]*content=["']([^"']+)["']/i.exec(
+          html,
+        ) ??
+        /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:site_name["']/i.exec(
+          html,
+        );
 
-      return match?.[1] ? this.decodeHtmlEntities(match[1]) : '';
-    } catch (error) {
-      console.log('에러 링크:', link);
-      console.log('에러:', error);
-      return ''; // 썸네일 파싱 실패 시 빈 값 반환
+      return {
+        thumbnailUrl: imageMatch?.[1]
+          ? this.decodeHtmlEntities(imageMatch[1])
+          : '',
+        companyName: siteNameMatch?.[1] ?? '',
+      };
+    } catch {
+      return { thumbnailUrl: '', companyName: '' };
     }
   }
 
@@ -136,12 +147,52 @@ export class NewsCrawlingService {
       .replace(/&apos;/g, "'");
   }
 
-  private extractCompanyName(originallink: string): string {
+  async categorizeNews(title: string, description: string): Promise<Category> {
     try {
-      const url = new URL(originallink);
-      return url.hostname.replace('www.', '');
+      const apiKey = this.configService.get<string>('GROQ_API_KEY') ?? '';
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 20,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  '당신은 뉴스 카테고리 분류기입니다. 반드시 주어진 카테고리 중 하나만 반환하세요. 다른 텍스트는 절대 포함하지 마세요.',
+              },
+              {
+                role: 'user',
+                content: `다음 뉴스를 카테고리 중 하나로 분류해주세요.
+카테고리: POLITICS, ECONOMY, SOCIETY, LIFE, IT_SCIENCE, WORLD
+카테고리 설명: POLITICS - 정치, ECONOMY - 경제, SOCIETY - 사회, LIFE - 생활/문화, IT_SCIENCE - IT/과학, WORLD - 세계
+제목: ${title}
+내용: ${description}
+카테고리 이름만 반환하세요.`,
+              },
+            ],
+          }),
+        },
+      );
+
+      const data = (await response.json()) as {
+        choices: { message: { content: string } }[];
+      };
+
+      const categoryText = data.choices[0]?.message?.content
+        ?.trim()
+        .toUpperCase();
+      return (
+        Category[categoryText as keyof typeof Category] ?? Category.SOCIETY
+      );
     } catch {
-      return '';
+      return Category.SOCIETY;
     }
   }
 }
