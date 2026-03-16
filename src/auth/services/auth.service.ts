@@ -7,7 +7,7 @@ import { TokenService } from './token.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { RefreshResponseDto } from '../dto/refresh-response.dto';
 import { RefreshRequestDto } from '../dto/refresh-request.dto';
-import { SignupRequestDto } from 'src/user/dto/signup-request.dto';
+import { SignupRequestDto } from 'src/auth/dto/signup-request.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,13 +18,16 @@ export class AuthService {
   ) {}
 
   async signup(request: SignupRequestDto): Promise<TokenResponseDto> {
-    const { email, password } = request;
+    await this.userService.findExistingUser(request.email);
 
-    await this.userService.findExistingUser(email);
+    const hashedPassword = await bcrypt.hash(request.password, 10);
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await this.userService.create(email, hashedPassword);
+    const user = await this.userService.create(
+      request.email,
+      hashedPassword,
+      request.username ?? null,
+      request.category ?? null,
+    );
 
     const tokens = await this.tokenService.generateTokens(user);
 

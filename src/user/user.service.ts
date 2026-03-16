@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateUserRequestDto } from './dto/update-user-request.dto';
 import { UpdateUserResponseDto } from './dto/update-user-response.dto';
+import { Category } from 'src/news/entities/enum/category.enum';
 
 @Injectable()
 export class UserService {
@@ -17,14 +18,25 @@ export class UserService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(email: string, hashedPassword: string): Promise<User> {
+  async create(
+    email: string,
+    hashedPassword: string,
+    username: string | null,
+    category: Category | null,
+  ): Promise<User> {
     if (!email && !hashedPassword) {
       throw new UnauthorizedException('회원가입을 진행할 수 없습니다.');
     }
+
+    if (!username) {
+      username = 'New Cracker User';
+    }
+
     const user = this.userRepository.create({
-      username: 'new cracker',
       email: email,
       password: hashedPassword,
+      username: username ?? 'New Cracker User',
+      category: category ?? undefined,
     });
 
     return await this.userRepository.save(user);
