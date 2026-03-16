@@ -4,7 +4,7 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm/browser';
+} from 'typeorm';
 import { News } from './news.entity';
 
 @Entity()

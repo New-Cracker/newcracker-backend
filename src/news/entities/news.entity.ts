@@ -5,7 +5,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from 'typeorm/browser';
+} from 'typeorm';
 import { Company } from './company.entity';
 import { Category } from './enum/category.enum';
 
