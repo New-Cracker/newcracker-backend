@@ -48,7 +48,7 @@ export class NewsService {
     // 언론사 저장 or 조회
     const company = await this.companyService.findOrCreate(
       dto.companyName,
-      dto.originallink,
+      dto.link,
     );
 
     // 뉴스 저장

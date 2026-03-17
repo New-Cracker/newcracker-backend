@@ -11,7 +11,6 @@ export class LatestNewsResponseDto {
   summary: string;
   publicationDate: Date;
   companyName: string;
-  originallink: string;
   link: string;
 
   // static from(news: News): LatestNewsResponseDto {
@@ -33,7 +32,6 @@ export class LatestNewsResponseDto {
     dto.summary = item.description;
     dto.publicationDate = new Date(item.pubDate);
     dto.companyName = item.companyName;
-    dto.originallink = item.originallink;
     dto.link = item.link;
     return dto;
   }

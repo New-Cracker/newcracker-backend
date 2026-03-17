@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginRequestDto } from '../dto/login-request.dto';
-import { TokenResponseDto } from '../dto/token-response.dto';
+import { AuthResponseDto } from '../dto/auth-response.dto';
 import bcrypt from 'node_modules/bcryptjs';
 import { UserService } from 'src/user/user.service';
 import { TokenService } from './token.service';
@@ -17,7 +17,7 @@ export class AuthService {
     private readonly userService: UserService,
   ) {}
 
-  async signup(request: SignupRequestDto): Promise<TokenResponseDto> {
+  async signup(request: SignupRequestDto): Promise<AuthResponseDto> {
     await this.userService.findExistingUser(request.email);
 
     const hashedPassword = await bcrypt.hash(request.password, 10);
@@ -33,10 +33,14 @@ export class AuthService {
 
     await this.refreshTokenService.save(user, tokens.refreshToken);
 
-    return tokens;
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      username: user.username,
+    };
   }
 
-  async login(request: LoginRequestDto): Promise<TokenResponseDto> {
+  async login(request: LoginRequestDto): Promise<AuthResponseDto> {
     const { email, password } = request;
 
     const user = await this.userService.findByEmail(email);
@@ -52,7 +56,11 @@ export class AuthService {
 
     await this.refreshTokenService.save(user, tokens.refreshToken);
 
-    return tokens;
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      username: user.username,
+    };
   }
 
   async refresh(

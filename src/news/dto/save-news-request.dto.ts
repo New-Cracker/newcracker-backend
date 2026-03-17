@@ -27,9 +27,5 @@ export class SaveNewsRequestDto {
 
   @IsString()
   @IsNotEmpty()
-  originallink: string; // homepageUrl 추출용
-
-  @IsString()
-  @IsNotEmpty()
   link: string;
 }
