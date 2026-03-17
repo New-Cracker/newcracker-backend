@@ -18,20 +18,6 @@ export class NewsService {
     private readonly companyService: CompanyService,
   ) {}
 
-  // async findById(id: number): Promise<NewsResponseDto> {
-  //   const news = await this.newsRepository.findOne({
-  //     where: { id },
-  //     relations: ['company'], // company 조인
-  //   });
-
-  //   if (!news) throw new NotFoundException('존재하지 않는 뉴스입니다.');
-
-  //   // 조회수 증가
-  //   await this.newsRepository.update(id, { viewCount: news.viewCount + 1 });
-
-  //   return NewsResponseDto.from(news);
-  // }
-
   async findLatest(): Promise<LatestNewsResponseDto[]> {
     const newsItems = await this.newsCrawlingService.fetchLatestNews();
     return newsItems.map((item) => LatestNewsResponseDto.fromNaverItem(item));

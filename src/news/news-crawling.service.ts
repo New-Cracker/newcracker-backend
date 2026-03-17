@@ -49,7 +49,16 @@ export class NewsCrawlingService {
             item.title,
             item.description,
           );
-          return { ...item, thumbnailUrl, companyName, category };
+          return {
+            ...item,
+            description: this.decodeHtmlEntities(item.description).replace(
+              /<[^>]*>/g,
+              '',
+            ),
+            thumbnailUrl,
+            companyName,
+            category,
+          };
         }),
       );
 
