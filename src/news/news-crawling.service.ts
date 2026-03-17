@@ -21,37 +21,6 @@ export class NewsCrawlingService {
       this.configService.get<string>('NAVER_CLIENT_SECRET') ?? '';
   }
 
-  // async fetchNewsByKeyword(keyword: string): Promise<NewsItem[]> {
-  //   try {
-  //     const response = await firstValueFrom(
-  //       this.httpService.get<NewsResponse>(
-  //         'https://openapi.naver.com/v1/search/news.json',
-  //         {
-  //           params: { query: keyword, display: 10, sort: 'date' },
-  //           headers: {
-  //             'X-Naver-Client-Id': this.clientId,
-  //             'X-Naver-Client-Secret': this.clientSecret,
-  //           },
-  //         },
-  //       ),
-  //     );
-
-  //     // 각 뉴스 링크에서 og:image 파싱
-  //     const newsItems = await Promise.all(
-  //       response.data.items.map(async (item) => ({
-  //         ...item,
-  //         thumbnailUrl: await this.fetchThumbnail(item.link),
-  //       })),
-  //     );
-
-  //     return newsItems;
-  //   } catch {
-  //     throw new InternalServerErrorException(
-  //       '네이버 뉴스 API 호출에 실패했습니다.',
-  //     );
-  //   }
-  // }
-
   async fetchLatestNews(): Promise<NewsItem[]> {
     try {
       const response = await firstValueFrom(

@@ -21,7 +21,7 @@ import appConfig from './config/app.config';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true, // 개발용만 true
+        synchronize: config.get('NODE_ENV') !== 'prod',
         ssl:
           config.get('NODE_ENV') === 'prod'
             ? { rejectUnauthorized: false }
