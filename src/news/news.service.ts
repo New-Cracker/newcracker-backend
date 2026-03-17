@@ -18,8 +18,8 @@ export class NewsService {
     private readonly companyService: CompanyService,
   ) {}
 
-  async findLatest(): Promise<LatestNewsResponseDto[]> {
-    const newsItems = await this.newsCrawlingService.fetchLatestNews();
+  async findLatest(category?: string): Promise<LatestNewsResponseDto[]> {
+    const newsItems = await this.newsCrawlingService.fetchLatestNews(category);
     return newsItems.map((item) => LatestNewsResponseDto.fromNaverItem(item));
   }
 

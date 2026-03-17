@@ -1,8 +1,10 @@
 // news/news.controller.ts
-import { Body, Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { NewsService } from './news.service';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
+import { Category } from './entities/enum/category.enum';
 
 @ApiTags('news')
 @Controller('news')
@@ -16,8 +18,11 @@ export class NewsController {
   //   return this.newsService.findById(id);
   // }
 
-  @Get()
-  findLatest() {
-    return this.newsService.findLatest();
+  @Get('latest')
+  @ApiQuery({ name: 'category', required: false, enum: Category })
+  findLatest(
+    @Query('category') category?: string,
+  ): Promise<LatestNewsResponseDto[]> {
+    return this.newsService.findLatest(category);
   }
 }

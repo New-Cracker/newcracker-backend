@@ -7,6 +7,17 @@ import { NewsItem } from './interfaces/news-item.interface';
 import { NewsResponse } from './interfaces/news-response.interface';
 import { Category } from './entities/enum/category.enum';
 
+//네이버 뉴스에서 카테고리 검색 기능은 지원하지 않음
+//키워드 검색을 이용할 것임
+const CATEGORY_QUERY_MAP: Record<string, string> = {
+  POLITICS: '정치',
+  ECONOMY: '경제',
+  SOCIETY: '사회',
+  LIFE: '생활 문화',
+  IT_SCIENCE: 'IT 과학',
+  WORLD: '세계',
+};
+
 @Injectable()
 export class NewsCrawlingService {
   private readonly clientId: string;
@@ -21,15 +32,18 @@ export class NewsCrawlingService {
       this.configService.get<string>('NAVER_CLIENT_SECRET') ?? '';
   }
 
-  async fetchLatestNews(): Promise<NewsItem[]> {
+  async fetchLatestNews(category?: string): Promise<NewsItem[]> {
     try {
+      //뉴스 -> 최신 뉴스 조회를 위한 일종의 편법
+      const query = CATEGORY_QUERY_MAP[category?.toUpperCase() ?? ''] ?? '뉴스';
+
       const response = await firstValueFrom(
         this.httpService.get<NewsResponse>(
           'https://openapi.naver.com/v1/search/news.json',
           {
             params: {
-              query: '뉴스', // 전체 최신 뉴스
-              display: 10,
+              query, // 전체 최신 뉴스
+              display: 5,
               sort: 'date', // 최신순
             },
             headers: {
@@ -57,7 +71,7 @@ export class NewsCrawlingService {
             ),
             thumbnailUrl,
             companyName,
-            category,
+            category: category,
           };
         }),
       );
