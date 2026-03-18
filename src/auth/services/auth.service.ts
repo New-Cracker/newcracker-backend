@@ -37,6 +37,7 @@ export class AuthService {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       username: user.username,
+      category: user.category,
     };
   }
 
@@ -60,6 +61,7 @@ export class AuthService {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       username: user.username,
+      category: user.category,
     };
   }
 
