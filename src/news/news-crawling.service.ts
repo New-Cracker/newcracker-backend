@@ -65,6 +65,7 @@ export class NewsCrawlingService {
           );
           return {
             ...item,
+            title: this.decodeHtmlEntities(item.title).replace(/<[^>]*>/g, ''),
             description: this.decodeHtmlEntities(item.description).replace(
               /<[^>]*>/g,
               '',
