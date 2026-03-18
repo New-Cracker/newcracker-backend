@@ -5,6 +5,7 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
 import { Category } from './entities/enum/category.enum';
+import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 
 @ApiTags('news')
 @Controller('news')
@@ -13,16 +14,16 @@ import { Category } from './entities/enum/category.enum';
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
-  // @Get(':id')
-  // findOne(@Param('id', ParseIntPipe) id: number) {
-  //   return this.newsService.findById(id);
-  // }
-
   @Get('latest')
   @ApiQuery({ name: 'category', required: false, enum: Category })
   findLatest(
     @Query('category') category?: string,
   ): Promise<LatestNewsResponseDto[]> {
     return this.newsService.findLatest(category);
+  }
+
+  @Get('popular')
+  async findPopular(): Promise<PopularNewsResponseDto[]> {
+    return this.newsService.findPopular();
   }
 }

@@ -8,6 +8,7 @@ import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
 import { NewsCrawlingService } from './news-crawling.service';
 import { CompanyService } from './company.service';
 import { SaveNewsRequestDto } from './dto/save-news-request.dto';
+import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 
 @Injectable()
 export class NewsService {
@@ -21,6 +22,15 @@ export class NewsService {
   async findLatest(category?: string): Promise<LatestNewsResponseDto[]> {
     const newsItems = await this.newsCrawlingService.fetchLatestNews(category);
     return newsItems.map((item) => LatestNewsResponseDto.fromNaverItem(item));
+  }
+
+  async findPopular(): Promise<PopularNewsResponseDto[]> {
+    const newsList = await this.newsRepository.find({
+      order: { viewCount: 'DESC' },
+      take: 5,
+    });
+
+    return newsList.map((news) => PopularNewsResponseDto.from(news));
   }
 
   async save(dto: SaveNewsRequestDto): Promise<NewsResponseDto> {

@@ -1,5 +1,5 @@
 // news/dto/news-response.dto.ts
-import { Company } from '../entities/company.entity';
+
 import { News } from '../entities/news.entity';
 import { Category } from '../entities/enum/category.enum';
 
@@ -17,7 +17,8 @@ export class NewsResponseDto {
   viewCount: number;
   createdAt: Date;
   updatedAt: Date;
-  company: Company;
+  companyName: string;
+  companyHomepageUrl: string;
 
   static from(news: News): NewsResponseDto {
     const dto = new NewsResponseDto();
@@ -34,7 +35,8 @@ export class NewsResponseDto {
     dto.viewCount = news.viewCount;
     dto.createdAt = news.createdAt;
     dto.updatedAt = news.updatedAt;
-    dto.company = news.company;
+    dto.companyName = news.company?.name ?? '';
+    dto.companyHomepageUrl = news.company?.homepageUrl ?? '';
     return dto;
   }
 }
