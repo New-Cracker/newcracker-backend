@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
-import { SwaggerCofig } from './config/swagger.config';
+import { SwaggerConfig } from './config/swagger.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,9 +21,17 @@ async function bootstrap() {
     credentials: true, // 쿠키/인증 헤더 허용
   });
 
-  const apiDocumentOptions = new SwaggerCofig().initializeOptions();
-  const apiDocument = SwaggerModule.createDocument(app, apiDocumentOptions);
-  SwaggerModule.setup('api/v1/docs', app, apiDocument);
+  const swaggerConfig = new SwaggerConfig();
+  const document = SwaggerModule.createDocument(
+    app,
+    swaggerConfig.initializeOptions(),
+  );
+  SwaggerModule.setup(
+    'api/v1/docs',
+    app,
+    document,
+    swaggerConfig.getCustomOptions(),
+  );
 
   await app.listen(5000);
 }

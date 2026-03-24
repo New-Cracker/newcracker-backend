@@ -1,6 +1,6 @@
-import { DocumentBuilder } from '@nestjs/swagger';
+import { DocumentBuilder, SwaggerCustomOptions } from '@nestjs/swagger';
 
-export class SwaggerCofig {
+export class SwaggerConfig {
   private readonly doc: DocumentBuilder = new DocumentBuilder();
 
   public initializeOptions() {
@@ -20,5 +20,13 @@ export class SwaggerCofig {
         'access-token',
       )
       .build();
+  }
+
+  public getCustomOptions(): SwaggerCustomOptions {
+    return {
+      swaggerOptions: {
+        persistAuthorization: true, // 페이지 새로고침 후에도 JWT 유지
+      },
+    };
   }
 }
