@@ -3,11 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { News } from './entities/news.entity';
-import { NewsResponseDto } from './dto/news-detail-response.dto';
+import { NewsResponseDto } from './dto/news-response.dto';
 import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
 import { NewsCrawlingService } from './news-crawling.service';
 import { CompanyService } from './company.service';
-import { SaveNewsRequestDto } from './dto/save-news-request.dto';
+import { GetNewsDetailRequestDto } from './dto/get-news-detail-request.dto';
 import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 
 @Injectable()
@@ -33,14 +33,28 @@ export class NewsService {
     return newsList.map((news) => PopularNewsResponseDto.from(news));
   }
 
-  async save(dto: SaveNewsRequestDto): Promise<NewsResponseDto> {
-    // 이미 저장된 뉴스인지 확인 (link 기준 중복 체크)
-    const existing = await this.newsRepository.findOne({
+  async getDetail(dto: GetNewsDetailRequestDto): Promise<NewsResponseDto> {
+    let news = await this.newsRepository.findOne({
       where: { link: dto.link },
       relations: ['company'],
     });
-    if (existing) return NewsResponseDto.from(existing);
 
+    if (!news) {
+      await this.save(dto);
+      news = await this.newsRepository.findOne({
+        where: { link: dto.link },
+        relations: ['company'],
+      });
+    }
+
+    // 위 두 경로 모두 news가 반드시 존재 — non-null assertion 사용
+    await this.newsRepository.increment({ link: dto.link }, 'viewCount', 1);
+    news!.viewCount += 1;
+
+    return NewsResponseDto.from(news!);
+  }
+
+  private async save(dto: GetNewsDetailRequestDto): Promise<NewsResponseDto> {
     // 언론사 저장 or 조회
     const company = await this.companyService.findOrCreate(
       dto.companyName,

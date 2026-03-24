@@ -1,11 +1,29 @@
 // news/news.controller.ts
-import { Body, Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { NewsService } from './news.service';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
 import { Category } from './entities/enum/category.enum';
 import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
+import { NewsResponseDto } from './dto/news-response.dto';
+import { GetNewsDetailRequestDto } from './dto/get-news-detail-request.dto';
 
 @ApiTags('news')
 @Controller('news')
@@ -25,5 +43,18 @@ export class NewsController {
   @Get('popular')
   async findPopular(): Promise<PopularNewsResponseDto[]> {
     return this.newsService.findPopular();
+  }
+
+  @Post('detail')
+  @ApiOperation({
+    summary: '뉴스 상세 조회',
+    description:
+      'link로 뉴스를 조회합니다. DB에 없으면 저장 후 반환하며, 조회수를 1 증가시킵니다.',
+  })
+  @ApiResponse({ status: 200, description: '조회 성공', type: NewsResponseDto })
+  async getDetail(
+    @Body() dto: GetNewsDetailRequestDto,
+  ): Promise<NewsResponseDto> {
+    return this.newsService.getDetail(dto);
   }
 }
