@@ -26,12 +26,10 @@ export class NewsCacheService {
     const cached = await this.cacheManager.get<NewsResponseDto[]>(key);
 
     if (cached) {
-      this.logger.log(`캐시 히트 [${key}]`);
       return cached;
     }
 
     // 캐시 미스 → 빈 배열 즉시 반환 + 백그라운드에서 캐싱
-    this.logger.log(`캐시 미스 [${key}] — 크롤링 후 반환`);
     await this.fetchAndCache(category);
 
     return (await this.cacheManager.get<NewsResponseDto[]>(key)) ?? [];
@@ -42,6 +40,5 @@ export class NewsCacheService {
     const newsItems = await this.newsCrawlingService.fetchByCategory(category);
     const dtos = newsItems.map((item) => NewsResponseDto.fromNaverItem(item));
     await this.cacheManager.set(key, dtos, CACHE_TTL);
-    this.logger.log(`캐시 저장 완료 [${key}] — ${dtos.length}개`);
   }
 }

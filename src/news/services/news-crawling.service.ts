@@ -115,8 +115,6 @@ export class NewsCrawlingService {
         const items = response.data.items;
         if (!items.length) break;
 
-        console.log(`[fetch] start=${start}, 가져온 개수=${items.length}`);
-
         const classifiedItems = await Promise.allSettled(
           items.map(async (item) => {
             const [{ thumbnailUrl, companyName }, classifiedCategory] =
@@ -140,19 +138,6 @@ export class NewsCrawlingService {
             };
           }),
         );
-
-        const fulfilled = classifiedItems
-          .filter(
-            (r): r is PromiseFulfilledResult<NewsItem> =>
-              r.status === 'fulfilled',
-          )
-          .map((r) => r.value);
-
-        console.log(
-          `[classify] 분류 결과:`,
-          fulfilled.map((i) => i.category),
-        );
-
         const matched = classifiedItems
           .filter(
             (r): r is PromiseFulfilledResult<NewsItem> =>
@@ -163,10 +148,6 @@ export class NewsCrawlingService {
 
         result.push(...matched);
         start += FETCH_SIZE;
-
-        console.log(
-          `[filter] 요청 카테고리=${category}, 일치=${matched.length}개`,
-        );
 
         result.push(...matched);
         start += FETCH_SIZE;
