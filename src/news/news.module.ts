@@ -5,12 +5,12 @@ import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { News } from './entities/news.entity';
-import { Company } from './entities/company.entity';
-import { NewsCrawlingService } from './news-crawling.service';
-import { CompanyService } from './company.service';
+import { Company } from '../company/entities/company.entity';
+import { NewsCrawlingService } from './services/news-crawling.service';
+import { CompanyService } from 'src/company/company.service';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-ioredis-yet';
-import { NewsCacheService } from './news-cache.service';
+import { NewsCacheService } from './services/news-cache.service';
 
 @Module({
   imports: [

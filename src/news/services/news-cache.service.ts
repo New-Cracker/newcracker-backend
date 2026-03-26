@@ -2,8 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { NewsCrawlingService } from './news-crawling.service';
-import { NewsResponseDto } from './dto/news-response.dto';
-import { Category } from './entities/enum/category.enum';
+import { NewsResponseDto } from '../dto/news-response.dto';
+import { Category } from '../entities/enum/category.enum';
 
 const CACHE_TTL = 30 * 60 * 1000; // 30분 (ms)
 const CACHE_KEY_PREFIX = 'news';

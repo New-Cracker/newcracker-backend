@@ -5,13 +5,13 @@ import { Repository } from 'typeorm';
 import { News } from './entities/news.entity';
 import { NewsDetailResponseDto } from './dto/news-detail-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
-import { NewsCrawlingService } from './news-crawling.service';
-import { CompanyService } from './company.service';
+import { NewsCrawlingService } from './services/news-crawling.service';
+import { CompanyService } from 'src/company/company.service';
 import { NewsDetailRequestDto } from './dto/news-detail-request.dto';
 import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 import { Category } from './entities/enum/category.enum';
 import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
-import { NewsCacheService } from './news-cache.service';
+import { NewsCacheService } from './services/news-cache.service';
 
 const ITEMS_PER_PAGE = 10;
 

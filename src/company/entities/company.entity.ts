@@ -5,7 +5,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { News } from './news.entity';
+import { News } from '../../news/entities/news.entity';
 
 @Entity()
 export class Company {

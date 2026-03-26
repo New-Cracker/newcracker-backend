@@ -3,9 +3,9 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import { NewsItem } from './interfaces/news-item.interface';
-import { NewsResponse } from './interfaces/news-response.interface';
-import { Category } from './entities/enum/category.enum';
+import { NewsItem } from '../interfaces/news-item.interface';
+import { NewsResponse } from '../interfaces/news-response.interface';
+import { Category } from '../entities/enum/category.enum';
 
 //네이버 뉴스에서 카테고리 검색 기능은 지원하지 않음
 //키워드 검색을 이용할 것임

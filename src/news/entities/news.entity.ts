@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Company } from './company.entity';
+import { Company } from '../../company/entities/company.entity';
 import { Category } from './enum/category.enum';
 
 @Entity()
