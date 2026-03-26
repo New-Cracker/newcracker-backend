@@ -1,42 +1,25 @@
-// news/dto/news-response.dto.ts
-
-import { News } from '../entities/news.entity';
 import { Category } from '../entities/enum/category.enum';
+import { NewsItem } from '../interfaces/news-item.interface';
 
 export class NewsResponseDto {
   id: number;
   title: string;
-  publicationDate: Date;
+  category: Category;
   thumbnailUrl: string;
   summary: string;
-  aiSummary: string;
-  link: string;
-  similarLinks: string[];
-  category: Category;
-  language: string;
-  viewCount: number;
-  createdAt: Date;
-  updatedAt: Date;
+  publicationDate: Date;
   companyName: string;
-  companyHomepageUrl: string;
+  link: string;
 
-  static from(news: News): NewsResponseDto {
+  static fromNaverItem(item: NewsItem): NewsResponseDto {
     const dto = new NewsResponseDto();
-    dto.id = news.id;
-    dto.title = news.title;
-    dto.publicationDate = news.publicationDate;
-    dto.thumbnailUrl = news.thumbnailUrl;
-    dto.summary = news.summary;
-    dto.aiSummary = news.aiSummary;
-    dto.link = news.link;
-    dto.similarLinks = news.similarLinks;
-    dto.category = news.category;
-    dto.language = news.language;
-    dto.viewCount = news.viewCount;
-    dto.createdAt = news.createdAt;
-    dto.updatedAt = news.updatedAt;
-    dto.companyName = news.company?.name ?? '';
-    dto.companyHomepageUrl = news.company?.homepageUrl ?? '';
+    dto.title = item.title;
+    dto.category = item.category;
+    dto.thumbnailUrl = item.thumbnailUrl;
+    dto.summary = item.description;
+    dto.publicationDate = new Date(item.pubDate);
+    dto.companyName = item.companyName;
+    dto.link = item.link;
     return dto;
   }
 }

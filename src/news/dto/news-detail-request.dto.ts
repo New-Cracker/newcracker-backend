@@ -2,7 +2,7 @@
 import { IsEnum, IsNotEmpty, IsString, IsDateString } from 'class-validator';
 import { Category } from '../entities/enum/category.enum';
 
-export class GetNewsDetailRequestDto {
+export class NewsDetailRequestDto {
   @IsString()
   @IsNotEmpty()
   title: string;

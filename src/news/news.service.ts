@@ -3,25 +3,31 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { News } from './entities/news.entity';
+import { NewsDetailResponseDto } from './dto/news-detail-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
-import { LatestNewsResponseDto } from './dto/latest-news-response.dto';
 import { NewsCrawlingService } from './news-crawling.service';
 import { CompanyService } from './company.service';
-import { GetNewsDetailRequestDto } from './dto/get-news-detail-request.dto';
+import { NewsDetailRequestDto } from './dto/news-detail-request.dto';
 import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
+import { Category } from './entities/enum/category.enum';
+import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
+import { NewsCacheService } from './news-cache.service';
+
+const ITEMS_PER_PAGE = 10;
 
 @Injectable()
 export class NewsService {
   constructor(
     @InjectRepository(News)
     private readonly newsRepository: Repository<News>,
+    private readonly newsCacheService: NewsCacheService,
     private readonly newsCrawlingService: NewsCrawlingService,
     private readonly companyService: CompanyService,
   ) {}
 
-  async findLatest(category?: string): Promise<LatestNewsResponseDto[]> {
+  async findLatest(category?: string): Promise<NewsResponseDto[]> {
     const newsItems = await this.newsCrawlingService.fetchLatestNews(category);
-    return newsItems.map((item) => LatestNewsResponseDto.fromNaverItem(item));
+    return newsItems.map((item) => NewsResponseDto.fromNaverItem(item));
   }
 
   async findPopular(): Promise<PopularNewsResponseDto[]> {
@@ -33,7 +39,26 @@ export class NewsService {
     return newsList.map((news) => PopularNewsResponseDto.from(news));
   }
 
-  async getDetail(dto: GetNewsDetailRequestDto): Promise<NewsResponseDto> {
+  async findNewsByCategory(
+    category: Category,
+    page: number = 1,
+  ): Promise<PaginatedNewsResponseDto> {
+    const newsItems = await this.newsCacheService.getByCategory(category);
+
+    const totalItems = newsItems.length;
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pagedItems = newsItems.slice(startIndex, endIndex);
+
+    return PaginatedNewsResponseDto.of(
+      pagedItems,
+      totalItems,
+      page,
+      ITEMS_PER_PAGE,
+    );
+  }
+
+  async getDetail(dto: NewsDetailRequestDto): Promise<NewsDetailResponseDto> {
     let news = await this.newsRepository.findOne({
       where: { link: dto.link },
       relations: ['company'],
@@ -51,10 +76,12 @@ export class NewsService {
     await this.newsRepository.increment({ link: dto.link }, 'viewCount', 1);
     news!.viewCount += 1;
 
-    return NewsResponseDto.from(news!);
+    return NewsDetailResponseDto.from(news!);
   }
 
-  private async save(dto: GetNewsDetailRequestDto): Promise<NewsResponseDto> {
+  private async save(
+    dto: NewsDetailRequestDto,
+  ): Promise<NewsDetailResponseDto> {
     // 언론사 저장 or 조회
     const company = await this.companyService.findOrCreate(
       dto.companyName,
@@ -73,6 +100,6 @@ export class NewsService {
     });
 
     const savedNews = await this.newsRepository.save(news);
-    return NewsResponseDto.from({ ...savedNews, company });
+    return NewsDetailResponseDto.from({ ...savedNews, company });
   }
 }
