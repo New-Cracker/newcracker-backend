@@ -20,14 +20,28 @@ import { ConfigService } from '@nestjs/config';
     TypeOrmModule.forFeature([News, Company]),
     CacheModule.registerAsync({
       inject: [ConfigService],
-      useFactory: async (config: ConfigService) => ({
-        store: await redisStore(
-          config.get('NODE_ENV') === 'prod'
-            ? { url: config.get<string>('REDIS_URL') }
-            : { host: '127.0.0.1', port: 6379 },
-        ),
-        ttl: 30 * 60 * 1000,
-      }),
+      useFactory: async (config: ConfigService) => {
+        const isProd = config.get('NODE_ENV') === 'prod';
+
+        const store = await redisStore(
+          isProd
+            ? {
+                url: config.get<string>('REDIS_URL'), // rediss://... 형식
+                socket: {
+                  tls: true,
+                  rejectUnauthorized: false, // Upstash 인증서 검증 skip
+                },
+              }
+            : {
+                socket: { host: '127.0.0.1', port: 6379 },
+              },
+        );
+
+        return {
+          store,
+          ttl: 30 * 60 * 1000,
+        };
+      },
     }),
   ],
   controllers: [NewsController],
