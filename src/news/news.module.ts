@@ -11,6 +11,7 @@ import { CompanyService } from 'src/company/company.service';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-ioredis-yet';
 import { NewsCacheService } from './services/news-cache.service';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -18,12 +19,14 @@ import { NewsCacheService } from './services/news-cache.service';
     ScheduleModule.forRoot(),
     TypeOrmModule.forFeature([News, Company]),
     CacheModule.registerAsync({
-      useFactory: async () => ({
-        store: await redisStore({
-          host: process.env.REDIS_HOST ?? 'localhost',
-          port: Number(process.env.REDIS_PORT ?? 6379),
-        }),
-        ttl: 30 * 60 * 1000, // 30분 (ms)
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => ({
+        store: await redisStore(
+          config.get('NODE_ENV') === 'prod'
+            ? { url: config.get<string>('REDIS_URL') }
+            : { host: '127.0.0.1', port: 6379 },
+        ),
+        ttl: 30 * 60 * 1000,
       }),
     }),
   ],

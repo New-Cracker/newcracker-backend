@@ -63,7 +63,7 @@ export class NewsController {
   }
 
   @Get()
-  @ApiQuery({ name: 'category', required: false, enum: Category })
+  @ApiQuery({ name: 'category', required: true, enum: Category })
   @ApiDocs({
     summary: '카테고리별 뉴스 조회',
     description:
