@@ -148,9 +148,6 @@ export class NewsCrawlingService {
 
         result.push(...matched);
         start += FETCH_SIZE;
-
-        result.push(...matched);
-        start += FETCH_SIZE;
       }
 
       return result.slice(0, 100);

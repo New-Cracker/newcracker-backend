@@ -27,10 +27,10 @@ import { ConfigService } from '@nestjs/config';
           isProd
             ? {
                 url: config.get<string>('REDIS_URL'), // rediss://... 형식
-                // socket: {
-                //   tls: true,
-                //   rejectUnauthorized: false, // Upstash 인증서 검증 skip
-                // },
+                socket: {
+                  tls: true,
+                  rejectUnauthorized: false, // Upstash 인증서 검증 skip
+                },
               }
             : {
                 socket: { host: '127.0.0.1', port: 6379 },
@@ -39,7 +39,7 @@ import { ConfigService } from '@nestjs/config';
 
         return {
           store,
-          ttl: 30 * 60,
+          ttl: 30 * 60 * 1000,
         };
       },
     }),
