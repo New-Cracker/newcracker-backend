@@ -68,7 +68,6 @@ export class NewsService {
     });
 
     if (!news) {
-      await this.summarize(dto.link);
       await this.save(dto);
       news = await this.newsRepository.findOne({
         where: { link: dto.link },
@@ -95,7 +94,10 @@ export class NewsService {
     const articleText = await this.newsCrawlingService.fetchArticleText(
       dto.link,
     );
-    const aiSummary = await this.summarize(articleText);
+    const { aiSummary, keyword } =
+      await this.summarizeAndExtractKeyword(articleText);
+
+    const similarLinks = await this.newsCrawlingService.fetchByKeyword(keyword);
 
     // 뉴스 저장
     const news = this.newsRepository.create({
@@ -104,6 +106,7 @@ export class NewsService {
       thumbnailUrl: dto.thumbnailUrl,
       summary: dto.summary,
       aiSummary: aiSummary,
+      similarLinks: similarLinks,
       publicationDate: dto.publicationDate,
       link: dto.link,
       company,
@@ -113,9 +116,12 @@ export class NewsService {
     return NewsDetailResponseDto.from({ ...savedNews, company });
   }
 
-  //gemini-2.5-flash 모델을 사용한 뉴스 요약
-  async summarize(articleText: string): Promise<string> {
-    if (!articleText) return '';
+  //gemini-2.5-flash 모델을 사용한 뉴스 요약 & 비슷한 뉴스 링크 추출
+  async summarizeAndExtractKeyword(articleText: string): Promise<{
+    aiSummary: string;
+    keyword: string;
+  }> {
+    if (articleText.length < 100) return { aiSummary: '', keyword: '' };
 
     const genAI = new GoogleGenerativeAI(
       this.configService.getOrThrow<string>('GEMINI_API_KEY'),
@@ -123,19 +129,29 @@ export class NewsService {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
-      다음 뉴스 기사를 요약해주세요.
-      
-      [기사 내용]
-      ${articleText}
+    다음 뉴스 기사를 분석해주세요.
 
-      [필수 조건]
-      - 요약한 내용만 반환할 것 (인삿말, 설명 등 일절 금지)
-      - 마크다운 문법 사용 금지 (**, ##, - 등 금지)
-      - 오로지 텍스트만 반환할 것
-      - 10줄 이내로 작성할 것
-    `;
+    [기사 내용]
+    ${articleText}
+
+    [필수 조건]
+    - 아래 JSON 형식으로만 반환할 것
+    - 마크다운, 설명, 코드블록 일절 금지
+    - keyword는 네이버 뉴스 검색에 사용할 핵심 키워드 1~2개
+
+    {"summary": "10줄 이내 요약 텍스트", "keyword": "핵심 키워드"}
+  `;
 
     const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+    const text = result.response.text().trim();
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as {
+      summary: string;
+      keyword: string;
+    };
+
+    return {
+      aiSummary: parsed.summary ?? '',
+      keyword: parsed.keyword ?? '',
+    };
   }
 }

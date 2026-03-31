@@ -218,6 +218,29 @@ export class NewsCrawlingService {
     }
   }
 
+  async fetchByKeyword(keyword: string, display = 3): Promise<string[]> {
+    if (!keyword) return [];
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<NewsResponse>(
+          'https://openapi.naver.com/v1/search/news.json',
+          {
+            params: { query: keyword, display, sort: 'date' },
+            headers: {
+              'X-Naver-Client-Id': this.clientId,
+              'X-Naver-Client-Secret': this.clientSecret,
+            },
+          },
+        ),
+      );
+
+      return response.data.items.map((item) => item.link);
+    } catch {
+      return [];
+    }
+  }
+
   private decodeHtmlEntities(text: string): string {
     return text
       .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
