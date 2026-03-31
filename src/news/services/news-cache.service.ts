@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { NewsCrawlingService } from './news-crawling.service';
@@ -10,8 +10,6 @@ const CACHE_KEY_PREFIX = 'news';
 
 @Injectable()
 export class NewsCacheService {
-  private readonly logger = new Logger(NewsCacheService.name);
-
   constructor(
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly newsCrawlingService: NewsCrawlingService,
@@ -29,7 +27,6 @@ export class NewsCacheService {
       return cached;
     }
 
-    // 캐시 미스 → 빈 배열 즉시 반환 + 백그라운드에서 캐싱
     await this.fetchAndCache(category);
 
     return (await this.cacheManager.get<NewsResponseDto[]>(key)) ?? [];

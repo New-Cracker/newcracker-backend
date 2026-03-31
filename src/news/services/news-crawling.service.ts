@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { NewsItem } from '../interfaces/news-item.interface';
 import { NewsResponse } from '../interfaces/news-response.interface';
 import { Category } from '../entities/enum/category.enum';
+import * as cheerio from 'cheerio';
 
 //네이버 뉴스에서 카테고리 검색 기능은 지원하지 않음
 //키워드 검색을 이용할 것임
@@ -17,10 +18,6 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
   IT_SCIENCE: 'IT 과학',
   WORLD: '세계',
 };
-
-// const ITEMS_PER_PAGE = 10; // 페이지 당 아이템
-// const TOTAL_PAGES = 10; //페이지
-// const TOTAL_ITEMS = ITEMS_PER_PAGE * TOTAL_PAGES; // 총 개수
 
 @Injectable()
 export class NewsCrawlingService {
@@ -195,6 +192,29 @@ export class NewsCrawlingService {
       };
     } catch {
       return { thumbnailUrl: '', companyName: '' };
+    }
+  }
+
+  async fetchArticleText(link: string): Promise<string> {
+    try {
+      const res = await fetch(link, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }, // 이미 쓰던 헤더 통일
+      });
+      const html = await res.text();
+      const $ = cheerio.load(html);
+
+      $('script, style, nav, footer, header, aside').remove();
+
+      const articleText = $('article, .article-body, #articleBody, main')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 3000);
+
+      return articleText;
+    } catch {
+      console.log('크롤링 실패');
+      return ''; // 크롤링 실패 시 빈 문자열 반환
     }
   }
 
