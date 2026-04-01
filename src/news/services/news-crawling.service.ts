@@ -1,15 +1,19 @@
 // news/news-crawling.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Inject,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { firstValueFrom } from 'rxjs';
 import { NewsItem } from '../interfaces/news-item.interface';
 import { NewsResponse } from '../interfaces/news-response.interface';
 import { Category } from '../entities/enum/category.enum';
 import * as cheerio from 'cheerio';
 
-//네이버 뉴스에서 카테고리 검색 기능은 지원하지 않음
-//키워드 검색을 이용할 것임
 const CATEGORY_QUERY_MAP: Record<string, string> = {
   POLITICS: '정치',
   ECONOMY: '경제',
@@ -19,34 +23,73 @@ const CATEGORY_QUERY_MAP: Record<string, string> = {
   WORLD: '세계',
 };
 
+// Redis 캐시 TTL (ms) - cache-manager-ioredis-yet는 ms 단위
+const CACHE_TTL = 5 * 60 * 1000; // 5분
+
+// 동시 요청 수 제한 (메모리 절약 핵심)
+const CONCURRENCY = 3;
+
+// fetchMetadata HTML 수신 크기 제한 (50KB, og 태그는 <head>에 있으므로 충분)
+const HTML_BYTE_LIMIT = 51200;
+
+/**
+ * 동시 실행 수를 제한하는 유틸
+ * Promise.allSettled와 동일한 결과를 반환하되, concurrency 단위로 순차 실행
+ */
+async function pLimit<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = [];
+  for (let i = 0; i < tasks.length; i += concurrency) {
+    const batch = tasks.slice(i, i + concurrency).map((t) =>
+      t().then(
+        (value): PromiseFulfilledResult<T> => ({ status: 'fulfilled', value }),
+        (reason: unknown): PromiseRejectedResult => ({
+          status: 'rejected',
+          reason,
+        }),
+      ),
+    );
+    results.push(...(await Promise.all(batch)));
+  }
+  return results;
+}
+
 @Injectable()
 export class NewsCrawlingService {
   private readonly clientId: string;
   private readonly clientSecret: string;
 
+  /**
+   * 카테고리별 진행 중인 크롤링 Promise를 보관
+   * 동일 카테고리에 동시 요청이 몰려도 크롤링은 1번만 실행됨 (캐시 스탬피드 방지)
+   */
+  private readonly crawlingLocks = new Map<string, Promise<NewsItem[]>>();
+
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {
     this.clientId = this.configService.get<string>('NAVER_CLIENT_ID') ?? '';
     this.clientSecret =
       this.configService.get<string>('NAVER_CLIENT_SECRET') ?? '';
   }
 
+  // ──────────────────────────────────────────────
+  // Public Methods
+  // ──────────────────────────────────────────────
+
   async fetchLatestNews(category?: string): Promise<NewsItem[]> {
     try {
-      //뉴스 -> 최신 뉴스 조회를 위한 일종의 편법
       const query = CATEGORY_QUERY_MAP[category?.toUpperCase() ?? ''] ?? '뉴스';
 
       const response = await firstValueFrom(
         this.httpService.get<NewsResponse>(
           'https://openapi.naver.com/v1/search/news.json',
           {
-            params: {
-              query, // 전체 최신 뉴스
-              display: 5,
-              sort: 'date', // 최신순
-            },
+            params: { query, display: 5, sort: 'date' },
             headers: {
               'X-Naver-Client-Id': this.clientId,
               'X-Naver-Client-Secret': this.clientSecret,
@@ -55,12 +98,13 @@ export class NewsCrawlingService {
         ),
       );
 
+      // fetchLatestNews는 display: 5로 소량이라 동시성 제한 없이 유지
       const newsItems = await Promise.all(
         response.data.items.map(async (item) => {
           const { thumbnailUrl, companyName } = await this.fetchMetadata(
             item.link,
           );
-          const category = await this.categorizeNews(
+          const resolvedCategory = await this.categorizeNews(
             item.title,
             item.description,
           );
@@ -73,7 +117,7 @@ export class NewsCrawlingService {
             ),
             thumbnailUrl,
             companyName,
-            category: category,
+            category: resolvedCategory,
           };
         }),
       );
@@ -87,6 +131,88 @@ export class NewsCrawlingService {
   }
 
   async fetchByCategory(category: Category): Promise<NewsItem[]> {
+    const cacheKey = `news:category:${category}`;
+
+    // 1. 캐시 히트 → 즉시 반환
+    const cached = await this.cacheManager.get<NewsItem[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // 2. 캐시 미스 → 진행 중인 크롤링이 있으면 공유, 없으면 새로 시작
+    //    동일 카테고리 요청이 동시에 여러 개 들어와도 크롤링은 1번만 실행됨
+    if (!this.crawlingLocks.has(cacheKey)) {
+      const crawlPromise = this.crawlByCategory(category)
+        .then(async (items) => {
+          await this.cacheManager.set(cacheKey, items, CACHE_TTL);
+          return items;
+        })
+        .finally(() => {
+          this.crawlingLocks.delete(cacheKey);
+        });
+
+      this.crawlingLocks.set(cacheKey, crawlPromise);
+    }
+
+    // 크롤링 완료까지 대기 후 반환 → 캐시 미스여도 빈 배열 없음
+    return this.crawlingLocks.get(cacheKey)!;
+  }
+
+  async fetchArticleText(link: string): Promise<string> {
+    try {
+      const res = await fetch(link, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+      const html = await res.text();
+      const $ = cheerio.load(html);
+
+      $('script, style, nav, footer, header, aside').remove();
+
+      const articleText = $('article, .article-body, #articleBody, main')
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 3000);
+
+      return articleText;
+    } catch {
+      console.log('크롤링 실패');
+      return '';
+    }
+  }
+
+  async fetchByKeyword(keyword: string, display = 3): Promise<string[]> {
+    if (!keyword) return [];
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<NewsResponse>(
+          'https://openapi.naver.com/v1/search/news.json',
+          {
+            params: { query: keyword, display, sort: 'date' },
+            headers: {
+              'X-Naver-Client-Id': this.clientId,
+              'X-Naver-Client-Secret': this.clientSecret,
+            },
+          },
+        ),
+      );
+
+      return response.data.items.map((item) => item.link);
+    } catch {
+      return [];
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // Private Methods
+  // ──────────────────────────────────────────────
+
+  /**
+   * 실제 크롤링 로직 (fetchByCategory에서 캐시 미스 시 호출)
+   * - 동시 요청 수를 CONCURRENCY로 제한해 메모리 사용량 제어
+   */
+  private async crawlByCategory(category: Category): Promise<NewsItem[]> {
     try {
       const query = CATEGORY_QUERY_MAP[category] ?? '뉴스';
       const result: NewsItem[] = [];
@@ -112,8 +238,10 @@ export class NewsCrawlingService {
         const items = response.data.items;
         if (!items.length) break;
 
-        const classifiedItems = await Promise.allSettled(
-          items.map(async (item) => {
+        // Promise.allSettled → pLimit으로 교체 (동시 실행 수 제한)
+        // 반환 타입은 PromiseSettledResult<NewsItem>[]로 동일
+        const classifiedItems = await pLimit(
+          items.map((item) => async () => {
             const [{ thumbnailUrl, companyName }, classifiedCategory] =
               await Promise.all([
                 this.fetchMetadata(item.link),
@@ -134,7 +262,9 @@ export class NewsCrawlingService {
               category: classifiedCategory,
             };
           }),
+          CONCURRENCY,
         );
+
         const matched = classifiedItems
           .filter(
             (r): r is PromiseFulfilledResult<NewsItem> =>
@@ -155,13 +285,21 @@ export class NewsCrawlingService {
     }
   }
 
+  /**
+   * og:image, og:site_name 추출
+   * - HTML 전체 대신 앞부분 HTML_BYTE_LIMIT 바이트만 수신해 메모리 절약
+   * - og 태그는 <head> 안에 있으므로 50KB면 충분
+   */
   private async fetchMetadata(
     link: string,
   ): Promise<{ thumbnailUrl: string; companyName: string }> {
     try {
       const response = await firstValueFrom(
         this.httpService.get<string>(link, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
+          headers: {
+            'User-Agent': 'Mozilla/5.0',
+            Range: `bytes=0-${HTML_BYTE_LIMIT - 1}`,
+          },
           responseType: 'text',
         }),
       );
@@ -192,52 +330,6 @@ export class NewsCrawlingService {
       };
     } catch {
       return { thumbnailUrl: '', companyName: '' };
-    }
-  }
-
-  async fetchArticleText(link: string): Promise<string> {
-    try {
-      const res = await fetch(link, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }, // 이미 쓰던 헤더 통일
-      });
-      const html = await res.text();
-      const $ = cheerio.load(html);
-
-      $('script, style, nav, footer, header, aside').remove();
-
-      const articleText = $('article, .article-body, #articleBody, main')
-        .text()
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 3000);
-
-      return articleText;
-    } catch {
-      console.log('크롤링 실패');
-      return ''; // 크롤링 실패 시 빈 문자열 반환
-    }
-  }
-
-  async fetchByKeyword(keyword: string, display = 3): Promise<string[]> {
-    if (!keyword) return [];
-
-    try {
-      const response = await firstValueFrom(
-        this.httpService.get<NewsResponse>(
-          'https://openapi.naver.com/v1/search/news.json',
-          {
-            params: { query: keyword, display, sort: 'date' },
-            headers: {
-              'X-Naver-Client-Id': this.clientId,
-              'X-Naver-Client-Secret': this.clientSecret,
-            },
-          },
-        ),
-      );
-
-      return response.data.items.map((item) => item.link);
-    } catch {
-      return [];
     }
   }
 

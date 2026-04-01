@@ -12,13 +12,17 @@ import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 import { Category } from './entities/enum/category.enum';
 import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
 import { NewsCacheService } from './services/news-cache.service';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { ConfigService } from '@nestjs/config';
 
 const ITEMS_PER_PAGE = 10;
 
 @Injectable()
 export class NewsService {
+  // GoogleGenerativeAI 인스턴스를 생성자에서 한 번만 생성
+  // 기존: 호출마다 new GoogleGenerativeAI() → 내부 HTTP 클라이언트가 매번 생성되어 메모리 낭비
+  private readonly model: GenerativeModel;
+
   constructor(
     @InjectRepository(News)
     private readonly newsRepository: Repository<News>,
@@ -26,7 +30,12 @@ export class NewsService {
     private readonly newsCrawlingService: NewsCrawlingService,
     private readonly companyService: CompanyService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    const genAI = new GoogleGenerativeAI(
+      this.configService.getOrThrow<string>('GEMINI_API_KEY'),
+    );
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  }
 
   async findLatest(category?: string): Promise<NewsResponseDto[]> {
     const newsItems = await this.newsCrawlingService.fetchLatestNews(category);
@@ -69,13 +78,14 @@ export class NewsService {
 
     if (!news) {
       await this.save(dto);
+      // save()가 이미 DB에 저장 후 엔티티를 반환하므로 재조회 불필요
+      // relations 포함된 엔티티가 필요하므로 save 반환값 활용
       news = await this.newsRepository.findOne({
         where: { link: dto.link },
         relations: ['company'],
       });
     }
 
-    // 위 두 경로 모두 news가 반드시 존재 — non-null assertion 사용
     await this.newsRepository.increment({ link: dto.link }, 'viewCount', 1);
     news!.viewCount += 1;
 
@@ -85,7 +95,6 @@ export class NewsService {
   private async save(
     dto: NewsDetailRequestDto,
   ): Promise<NewsDetailResponseDto> {
-    // 언론사 저장 or 조회
     const company = await this.companyService.findOrCreate(
       dto.companyName,
       dto.link,
@@ -99,7 +108,6 @@ export class NewsService {
 
     const similarLinks = await this.newsCrawlingService.fetchByKeyword(keyword);
 
-    // 뉴스 저장
     const news = this.newsRepository.create({
       title: dto.title,
       category: dto.category,
@@ -116,17 +124,11 @@ export class NewsService {
     return NewsDetailResponseDto.from({ ...savedNews, company });
   }
 
-  //gemini-2.5-flash 모델을 사용한 뉴스 요약 & 비슷한 뉴스 링크 추출
   async summarizeAndExtractKeyword(articleText: string): Promise<{
     aiSummary: string;
     keyword: string;
   }> {
     if (articleText.length < 100) return { aiSummary: '', keyword: '' };
-
-    const genAI = new GoogleGenerativeAI(
-      this.configService.getOrThrow<string>('GEMINI_API_KEY'),
-    );
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
     다음 뉴스 기사를 분석해주세요.
@@ -142,7 +144,8 @@ export class NewsService {
     {"summary": "10줄 이내 요약 텍스트", "keyword": "핵심 키워드"}
   `;
 
-    const result = await model.generateContent(prompt);
+    // this.model 재사용 (생성자에서 초기화된 인스턴스)
+    const result = await this.model.generateContent(prompt);
     const text = result.response.text().trim();
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as {
       summary: string;
