@@ -23,19 +23,19 @@ import { ConfigService } from '@nestjs/config';
       useFactory: async (config: ConfigService) => {
         const isProd = config.get('NODE_ENV') === 'prod';
 
-        const store = await redisStore(
-          isProd
-            ? {
-                url: config.get<string>('REDIS_URL'), // rediss://... 형식
-                socket: {
-                  tls: true,
-                  rejectUnauthorized: false, // Upstash 인증서 검증 skip
-                },
-              }
-            : {
-                socket: { host: '127.0.0.1', port: 6379 },
-              },
-        );
+        // const store = await redisStore(
+        //   isProd
+        //     ? {
+        //         url: config.get<string>('REDIS_URL'), // rediss://... 형식
+        //         socket: {
+        //           tls: true,
+        //           rejectUnauthorized: false, // Upstash 인증서 검증 skip
+        //         },
+        //       }
+        //     : {
+        //         socket: { host: '127.0.0.1', port: 6379 },
+        //       },
+        // );
 
         // const redisUrl = new URL(config.get<string>('REDIS_URL')!);
 
@@ -49,6 +49,22 @@ import { ConfigService } from '@nestjs/config';
         //     rejectUnauthorized: false,
         //   },
         // });
+
+        const store = await redisStore(
+          isProd
+            ? {
+                host: config.get<string>('REDIS_HOST'),
+                port: config.get<number>('REDIS_PORT'),
+                password: config.get<string>('REDIS_PASSWORD'),
+                socket: {
+                  tls: true,
+                  rejectUnauthorized: false,
+                },
+              }
+            : {
+                socket: { host: '127.0.0.1', port: 6379 },
+              },
+        );
 
         return {
           store,
