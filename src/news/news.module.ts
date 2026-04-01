@@ -56,8 +56,7 @@ import { ConfigService } from '@nestjs/config';
                 host: config.get<string>('REDIS_HOST'),
                 port: config.get<number>('REDIS_PORT'),
                 password: config.get<string>('REDIS_PASSWORD'),
-                socket: {
-                  tls: true,
+                tls: {
                   rejectUnauthorized: false,
                 },
               }
