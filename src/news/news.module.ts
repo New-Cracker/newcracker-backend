@@ -21,34 +21,34 @@ import { ConfigService } from '@nestjs/config';
     CacheModule.registerAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
-        // const isProd = config.get('NODE_ENV') === 'prod';
+        const isProd = config.get('NODE_ENV') === 'prod';
 
-        // const store = await redisStore(
-        //   isProd
-        //     ? {
-        //         url: config.get<string>('REDIS_URL'), // rediss://... 형식
-        //         socket: {
-        //           tls: true,
-        //           rejectUnauthorized: false, // Upstash 인증서 검증 skip
-        //         },
-        //       }
-        //     : {
-        //         socket: { host: '127.0.0.1', port: 6379 },
-        //       },
-        // );
+        const store = await redisStore(
+          isProd
+            ? {
+                url: config.get<string>('REDIS_URL'), // rediss://... 형식
+                socket: {
+                  tls: true,
+                  rejectUnauthorized: false, // Upstash 인증서 검증 skip
+                },
+              }
+            : {
+                socket: { host: '127.0.0.1', port: 6379 },
+              },
+        );
 
-        const redisUrl = new URL(config.get<string>('REDIS_URL')!);
+        // const redisUrl = new URL(config.get<string>('REDIS_URL')!);
 
-        const store = await redisStore({
-          host: redisUrl.hostname,
-          port: Number(redisUrl.port),
-          username: redisUrl.username || 'default',
-          password: redisUrl.password,
-          socket: {
-            tls: true,
-            rejectUnauthorized: false,
-          },
-        });
+        // const store = await redisStore({
+        //   host: redisUrl.hostname,
+        //   port: Number(redisUrl.port),
+        //   username: redisUrl.username || 'default',
+        //   password: redisUrl.password,
+        //   socket: {
+        //     tls: true,
+        //     rejectUnauthorized: false,
+        //   },
+        // });
 
         return {
           store,
