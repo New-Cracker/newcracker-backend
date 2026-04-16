@@ -1,0 +1,294 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776038081842,
+  "projectRoot": "c:\\Users\\User\\new-cracker\\newcracker-backend",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "@nestjs/core",
+        "version": "11.0.1",
+        "category": "backend"
+      },
+      {
+        "name": "jest",
+        "version": "30.0.0",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": "npm test",
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run start",
+    "scripts": {
+      "build": "nest build",
+      "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+      "start": "nest start",
+      "start:dev": "nest start --watch",
+      "start:debug": "nest start --debug --watch",
+      "start:prod": "node dist/main",
+      "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+      "test": "jest",
+      "test:watch": "jest --watch",
+      "test:cov": "jest --coverage",
+      "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+      "test:e2e": "jest --config ./test/jest-e2e.json"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase/PascalCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src",
+      "test"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "dist": {
+      "path": "dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 13,
+      "lastAccessed": 1776038081806,
+      "keyFiles": [
+        "app.controller.d.ts",
+        "app.controller.js",
+        "app.controller.js.map",
+        "app.module.d.ts",
+        "app.module.js"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 5,
+      "lastAccessed": 1776038081807,
+      "keyFiles": [
+        "app.controller.spec.ts",
+        "app.controller.ts",
+        "app.module.ts",
+        "app.service.ts",
+        "main.ts"
+      ]
+    },
+    "test": {
+      "path": "test",
+      "purpose": "Test files",
+      "fileCount": 2,
+      "lastAccessed": 1776038081816,
+      "keyFiles": [
+        "app.e2e-spec.ts",
+        "jest-e2e.json"
+      ]
+    },
+    "src\\config": {
+      "path": "src\\config",
+      "purpose": "Configuration files",
+      "fileCount": 2,
+      "lastAccessed": 1776038081820,
+      "keyFiles": [
+        "app.config.ts",
+        "swagger.config.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src\\news\\news.service.ts",
+      "accessCount": 16,
+      "lastAccessed": 1776043752792,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\news.controller.ts",
+      "accessCount": 14,
+      "lastAccessed": 1776043768238,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\news.module.ts",
+      "accessCount": 7,
+      "lastAccessed": 1776042591346,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\services\\recent-news.service.ts",
+      "accessCount": 4,
+      "lastAccessed": 1776042462949,
+      "type": "file"
+    },
+    {
+      "path": "src",
+      "accessCount": 2,
+      "lastAccessed": 1776040680251,
+      "type": "directory"
+    },
+    {
+      "path": "src\\auth\\interfaces\\jwt-payload.interface.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776040688134,
+      "type": "file"
+    },
+    {
+      "path": ".env",
+      "accessCount": 2,
+      "lastAccessed": 1776042716212,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\dto\\news-detail-response.dto.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776043248277,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\entities\\news.entity.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040618750,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\services\\news-cache.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040619619,
+      "type": "file"
+    },
+    {
+      "path": "src\\app.module.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040619683,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\guards\\jwt-auth.guard.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040625033,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\strategies\\jwt.strategy.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040625114,
+      "type": "file"
+    },
+    {
+      "path": "src\\user\\entities\\user.entity.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040625531,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\auth.module.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040626148,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\auth.controller.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040626206,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\services\\auth.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040629079,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\services\\token.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040629340,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\entities\\enum\\category.enum.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040629755,
+      "type": "file"
+    },
+    {
+      "path": "src\\auth\\entities\\refresh-token.entity.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040632217,
+      "type": "file"
+    },
+    {
+      "path": "src\\user\\user.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040632458,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\dto\\news-response.dto.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040633177,
+      "type": "file"
+    },
+    {
+      "path": "src\\common\\decorators\\current-user.decorator.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040684476,
+      "type": "file"
+    },
+    {
+      "path": "src\\news\\dto\\news-detail-request.dto.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040684678,
+      "type": "file"
+    },
+    {
+      "path": "src/news/services/news-cache.service.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776040785487,
+      "type": "directory"
+    },
+    {
+      "path": "src/auth",
+      "accessCount": 1,
+      "lastAccessed": 1776042959661,
+      "type": "directory"
+    },
+    {
+      "path": "src\\news\\dto\\recent-news-response.dto.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776043741394,
+      "type": "file"
+    },
+    {
+      "path": "src\\common\\decorators\\swagger.decorator.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776043773861,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}

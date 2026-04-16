@@ -1,9 +1,14 @@
 // news/news.service.ts
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { News } from './entities/news.entity';
 import { NewsDetailResponseDto } from './dto/news-detail-response.dto';
+import { RecentNewsResponseDto } from './dto/recent-news-response.dto';
 import { NewsResponseDto } from './dto/news-response.dto';
 import { NewsCrawlingService } from './services/news-crawling.service';
 import { CompanyService } from 'src/company/company.service';
@@ -14,14 +19,19 @@ import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
 import { NewsCacheService } from './services/news-cache.service';
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+import { NewsTrendResponseDto } from './dto/news-trend-response.dto';
 
 const ITEMS_PER_PAGE = 10;
+const RECENT_NEWS_PREFIX = 'recent-news';
+const MAX_RECENT_COUNT = 20;
+const RECENT_NEWS_TTL = 7 * 24 * 60 * 60; // 7일 (초)
 
 @Injectable()
 export class NewsService {
-  // GoogleGenerativeAI 인스턴스를 생성자에서 한 번만 생성
-  // 기존: 호출마다 new GoogleGenerativeAI() → 내부 HTTP 클라이언트가 매번 생성되어 메모리 낭비
   private readonly model: GenerativeModel;
+  private readonly fallbackModel: GenerativeModel;
+  private readonly redis: Redis;
 
   constructor(
     @InjectRepository(News)
@@ -34,7 +44,52 @@ export class NewsService {
     const genAI = new GoogleGenerativeAI(
       this.configService.getOrThrow<string>('GEMINI_API_KEY'),
     );
-    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    this.fallbackModel = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash-lite',
+    });
+
+    const isProd = this.configService.get('NODE_ENV') === 'prod';
+    this.redis = new Redis({
+      host: isProd ? this.configService.get<string>('REDIS_HOST') : '127.0.0.1',
+      port: isProd ? this.configService.get<number>('REDIS_PORT') : 6379,
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+      ...(isProd && {
+        tls: { rejectUnauthorized: false },
+      }),
+    });
+  }
+
+  async getRecentNews(userId: number): Promise<RecentNewsResponseDto[]> {
+    const key = `${RECENT_NEWS_PREFIX}:${userId}`;
+    const newsIds = await this.redis.zrevrange(key, 0, MAX_RECENT_COUNT - 1);
+
+    if (!newsIds.length) return [];
+
+    const ids = newsIds.map(Number);
+    const newsList = await this.newsRepository.find({
+      where: { id: In(ids) },
+      relations: ['company'],
+    });
+
+    // Redis 순서(최신순) 유지
+    const newsMap = new Map(newsList.map((n) => [n.id, n]));
+    return ids
+      .map((id) => newsMap.get(id))
+      .filter((n): n is News => !!n)
+      .map((n) => RecentNewsResponseDto.from(n));
+  }
+
+  private async addRecentNews(userId: number, newsId: number): Promise<void> {
+    const key = `${RECENT_NEWS_PREFIX}:${userId}`;
+    const score = Date.now();
+
+    await this.redis
+      .multi()
+      .zadd(key, score, String(newsId))
+      .zremrangebyrank(key, 0, -(MAX_RECENT_COUNT + 1))
+      .expire(key, RECENT_NEWS_TTL)
+      .exec();
   }
 
   async findLatest(category?: string): Promise<NewsResponseDto[]> {
@@ -70,7 +125,10 @@ export class NewsService {
     );
   }
 
-  async getDetail(dto: NewsDetailRequestDto): Promise<NewsDetailResponseDto> {
+  async getDetail(
+    dto: NewsDetailRequestDto,
+    userId?: number,
+  ): Promise<NewsDetailResponseDto> {
     let news = await this.newsRepository.findOne({
       where: { link: dto.link },
       relations: ['company'],
@@ -78,8 +136,6 @@ export class NewsService {
 
     if (!news) {
       await this.save(dto);
-      // save()가 이미 DB에 저장 후 엔티티를 반환하므로 재조회 불필요
-      // relations 포함된 엔티티가 필요하므로 save 반환값 활용
       news = await this.newsRepository.findOne({
         where: { link: dto.link },
         relations: ['company'],
@@ -88,6 +144,16 @@ export class NewsService {
 
     await this.newsRepository.increment({ link: dto.link }, 'viewCount', 1);
     news!.viewCount += 1;
+
+    if (userId) {
+      console.log(
+        `[RecentNews] Adding newsId=${news!.id} for userId=${userId}`,
+      );
+      await this.addRecentNews(userId, news!.id);
+      console.log(`[RecentNews] Successfully added`);
+    } else {
+      console.log(`[RecentNews] userId is undefined, skipping`);
+    }
 
     return NewsDetailResponseDto.from(news!);
   }
@@ -144,7 +210,6 @@ export class NewsService {
     {"summary": "10줄 이내 요약 텍스트", "keyword": "핵심 키워드"}
   `;
 
-    // this.model 재사용 (생성자에서 초기화된 인스턴스)
     const result = await this.model.generateContent(prompt);
     const text = result.response.text().trim();
     const parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as {
@@ -156,5 +221,89 @@ export class NewsService {
       aiSummary: parsed.summary ?? '',
       keyword: parsed.keyword ?? '',
     };
+  }
+
+  async getNewsTrend(category?: string): Promise<{ content: string }> {
+    const prompt = this.buildTrendPrompt(category);
+    const apiKey = this.configService.get<string>('GROQ_API_KEY') ?? '';
+
+    try {
+      const response = await fetch(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 1024,
+            temperature: 0.7,
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.json();
+        console.error(
+          'Groq 응답 에러:',
+          response.status,
+          JSON.stringify(errorBody, null, 2),
+        );
+        throw new InternalServerErrorException(
+          '뉴스 트렌드 조회 중 오류가 발생했습니다.',
+        );
+      }
+
+      const data = (await response.json()) as {
+        choices: { message: { content: string } }[];
+      };
+
+      const content = data.choices[0]?.message?.content ?? '';
+      return { content };
+    } catch (error) {
+      console.error('Groq API 에러:', error);
+      throw new InternalServerErrorException(
+        '뉴스 트렌드 조회 중 오류가 발생했습니다.',
+      );
+    }
+  }
+
+  private buildTrendPrompt(category?: string): string {
+    const currentDate = new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const categoryGuide = category
+      ? `카테고리: "${category}"에 한정해서`
+      : '카테고리 구분 없이 전체 분야에서';
+
+    return `
+오늘 날짜는 ${currentDate}입니다.
+
+당신은 뉴스 트렌드를 분석하는 전문 에디터입니다.
+이번 주에 이슈가 된 뉴스 주제들을 ${categoryGuide} 소개해주세요.
+
+다음 형식을 정확히 따라주세요:
+1. 첫 문단: 이번 주 트렌드를 전반적으로 요약하는 소개 멘트 (2~3문장)
+2. 각 트렌드 항목: "* 트렌드 제목: 간단한 설명" 형식으로 5~7개
+3. 마지막 문단: 마무리 멘트 (1~2문장)
+
+절대 지켜야 할 규칙:
+- 마크다운 문법(**, ##, --- 등) 사용 금지
+- * 기호는 트렌드 항목 앞에만 사용
+- 번호 매기기 없이 * 로만 항목 구분
+- 자연스러운 한국어로 작성
+- 추측이 아닌 실제 이슈 기반으로 작성
+  `.trim();
   }
 }

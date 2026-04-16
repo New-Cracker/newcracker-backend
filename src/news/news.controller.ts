@@ -7,9 +7,13 @@ import { NewsResponseDto } from './dto/news-response.dto';
 import { Category } from './entities/enum/category.enum';
 import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
 import { NewsDetailResponseDto } from './dto/news-detail-response.dto';
+import { RecentNewsResponseDto } from './dto/recent-news-response.dto';
 import { NewsDetailRequestDto } from './dto/news-detail-request.dto';
 import { ApiDocs } from 'src/common/decorators/swagger.decorator';
 import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
+import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { NewsTrendQueryDto } from './dto/news-trend-request.dto';
+import { NewsTrendResponseDto } from './dto/news-trend-response.dto';
 
 @ApiTags('news')
 @Controller('news')
@@ -58,8 +62,23 @@ export class NewsController {
   })
   async getDetail(
     @Body() dto: NewsDetailRequestDto,
+    @CurrentUser() user: { userId: number; email: string },
   ): Promise<NewsDetailResponseDto> {
-    return this.newsService.getDetail(dto);
+    return this.newsService.getDetail(dto, user.userId);
+  }
+
+  @Get('recent')
+  @ApiDocs({
+    summary: '최근 본 뉴스 조회',
+    description:
+      '사용자가 최근에 조회한 뉴스 목록을 최신순으로 반환합니다. 최대 20개까지 제공됩니다.',
+    successType: RecentNewsResponseDto,
+    isNotFound: false,
+  })
+  async getRecentNews(
+    @CurrentUser() user: { userId: number; email: string },
+  ): Promise<RecentNewsResponseDto[]> {
+    return this.newsService.getRecentNews(user.userId);
   }
 
   @Get()
@@ -76,5 +95,19 @@ export class NewsController {
     @Query('page') page: number = 1,
   ): Promise<PaginatedNewsResponseDto> {
     return this.newsService.findNewsByCategory(category, Number(page));
+  }
+
+  @Get('trend')
+  @ApiQuery({ name: 'category', required: true, enum: Category })
+  @ApiDocs({
+    summary: '금주 뉴스 트렌드 조회',
+    description: '카테고리(미지정 가능)에 따라 금주 뉴스 트렌드를 조회합니다.',
+    successType: PaginatedNewsResponseDto,
+    isAuth: false,
+  })
+  async getNewsTrend(
+    @Query() query: NewsTrendQueryDto,
+  ): Promise<NewsTrendResponseDto> {
+    return this.newsService.getNewsTrend(query.category);
   }
 }
