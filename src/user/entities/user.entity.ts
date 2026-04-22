@@ -25,7 +25,7 @@ export class User extends BaseEntity {
   @Column({ nullable: true })
   category: Category;
 
-  @Column({ default: false, nullable: false })
+  @Column({ default: false, nullable: false, name: 'is_deleted' })
   isDeleted: boolean;
 
   @OneToOne(() => RefreshToken, (refreshToken) => refreshToken.user)

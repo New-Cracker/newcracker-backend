@@ -17,22 +17,27 @@ export class News {
   @Column({ nullable: false })
   title: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, name: 'publication_date' })
   publicationDate: Date;
 
-  @Column({ type: 'varchar', length: 500, nullable: false })
+  @Column({
+    type: 'varchar',
+    length: 500,
+    nullable: false,
+    name: 'thumbnail_url',
+  })
   thumbnailUrl: string;
 
   @Column({ nullable: false })
   summary: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, name: 'ai_summary' })
   aiSummary: string;
 
   @Column({ nullable: false })
   link: string;
 
-  @Column({ type: 'jsonb', default: [] })
+  @Column({ type: 'jsonb', default: [], name: 'similar_links' })
   similarLinks: string[];
 
   @Column({ type: 'enum', enum: Category, nullable: false })
@@ -43,13 +48,13 @@ export class News {
   language: string;
 
   // 조회수 or 인기도 (트렌드 분석용)
-  @Column({ default: 0 })
+  @Column({ default: 0, name: 'view_count' })
   viewCount: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
   @ManyToOne(() => Company, (company) => company.news)

@@ -15,10 +15,10 @@ export class Company {
   @Column({ unique: true, nullable: false })
   name: string;
 
-  @Column({ nullable: false })
+  @Column({ nullable: false, name: 'homepage_url' })
   homepageUrl: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @OneToMany(() => News, (news) => news.company)
