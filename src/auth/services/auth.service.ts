@@ -21,7 +21,6 @@ export class AuthService {
     await this.userService.findExistingUser(request.email);
 
     const hashedPassword = await bcrypt.hash(request.password, 10);
-    console.log('해싱된 비밀번호:', hashedPassword);
 
     const user = await this.userService.create(
       request.email,
@@ -29,8 +28,6 @@ export class AuthService {
       request.username ?? null,
       request.category ?? null,
     );
-
-    console.log('저장된 유저 비밀번호:', user.password);
 
     const tokens = await this.tokenService.generateTokens(user);
 
