@@ -10,9 +10,4 @@ export class UserRepository {
   constructor(private readonly datasource: DataSource) {
     this.userRepository = this.datasource.getRepository(User);
   }
-
-  // createBoard(createUserDto: CreateUserDto){
-  //   ...
-  //   return this.userRepository.save(user);
-  // }
 }

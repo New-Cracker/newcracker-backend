@@ -7,6 +7,7 @@ import {
   UseGuards,
   Put,
   Get,
+  Delete,
   // Patch,
   // Param,
   // Delete,
@@ -55,7 +56,6 @@ export class UserController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdatePasswordRequestDto,
   ): Promise<string> {
-    console.log(user.sub);
     return this.userService.updatePassword(Number(user.sub), dto);
   }
 
@@ -68,7 +68,17 @@ export class UserController {
     isNotFound: true,
   })
   userDetail(@CurrentUser() user: JwtPayload): Promise<UserDetailResponseDto> {
-    console.log(user.sub);
     return this.userService.userDetail(Number(user.sub));
+  }
+
+  @Delete('/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiDocs({
+    summary: '회원 탈퇴',
+    description: '회원 탈퇴입니다.',
+    isNotFound: true,
+  })
+  deleteUser(@CurrentUser() user: JwtPayload): Promise<string> {
+    return this.userService.deleteUser(Number(user.sub));
   }
 }

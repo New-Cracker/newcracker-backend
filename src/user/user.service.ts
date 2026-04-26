@@ -128,4 +128,12 @@ export class UserService {
 
     return '비밀번호가 성공적으로 변경되었습니다.';
   }
+
+  async deleteUser(id: number): Promise<string> {
+    await this.findById(id);
+
+    await this.userRepository.delete(id);
+
+    return '회원 탈퇴가 완료되었습니다.';
+  }
 }
