@@ -1,36 +1,29 @@
 // news/news.service.ts
-import {
-  Injectable,
-  InternalServerErrorException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { News } from './entities/news.entity';
-import { NewsDetailResponseDto } from './dto/news-detail-response.dto';
-import { RecentNewsResponseDto } from './dto/recent-news-response.dto';
-import { NewsResponseDto } from './dto/news-response.dto';
-import { NewsCrawlingService } from './services/news-crawling.service';
+import { News } from '../entities/news.entity';
+import { NewsDetailResponseDto } from '../dto/news-detail-response.dto';
+import { RecentNewsResponseDto } from '../dto/recent-news-response.dto';
+import { NewsResponseDto } from '../dto/news-response.dto';
+import { NewsCrawlingService } from './news-crawling.service';
 import { CompanyService } from 'src/company/company.service';
-import { NewsDetailRequestDto } from './dto/news-detail-request.dto';
-import { PopularNewsResponseDto } from './dto/popular-news-response.dto';
-import { Category } from './entities/enum/category.enum';
-import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
-import { NewsCacheService } from './services/news-cache.service';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { NewsDetailRequestDto } from '../dto/news-detail-request.dto';
+import { PopularNewsResponseDto } from '../dto/popular-news-response.dto';
+import { Category } from '../entities/enum/category.enum';
+import { PaginatedNewsResponseDto } from '../dto/pagenatied-news-response.dto';
+import { NewsCacheService } from './news-cache.service';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { NewsTrendResponseDto } from './dto/news-trend-response.dto';
+import { AiService } from './ai.service';
 
 const ITEMS_PER_PAGE = 10;
 const RECENT_NEWS_PREFIX = 'recent-news';
 const MAX_RECENT_COUNT = 20;
-const RECENT_NEWS_TTL = 7 * 24 * 60 * 60; // 7일 (초)
+const RECENT_NEWS_TTL = 7 * 24 * 60 * 60;
 
 @Injectable()
 export class NewsService {
-  private readonly model: GenerativeModel;
-  private readonly fallbackModel: GenerativeModel;
   private readonly redis: Redis;
 
   constructor(
@@ -40,15 +33,8 @@ export class NewsService {
     private readonly newsCrawlingService: NewsCrawlingService,
     private readonly companyService: CompanyService,
     private readonly configService: ConfigService,
+    private readonly aiService: AiService,
   ) {
-    const genAI = new GoogleGenerativeAI(
-      this.configService.getOrThrow<string>('GEMINI_API_KEY'),
-    );
-    this.model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    this.fallbackModel = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
-    });
-
     const isProd = this.configService.get('NODE_ENV') === 'prod';
     this.redis = new Redis({
       host: isProd ? this.configService.get<string>('REDIS_HOST') : '127.0.0.1',
@@ -72,7 +58,6 @@ export class NewsService {
       relations: ['company'],
     });
 
-    // Redis 순서(최신순) 유지
     const newsMap = new Map(newsList.map((n) => [n.id, n]));
     return ids
       .map((id) => newsMap.get(id))
@@ -171,7 +156,6 @@ export class NewsService {
     );
     const { aiSummary, keyword } =
       await this.summarizeAndExtractKeyword(articleText);
-
     const similarLinks = await this.newsCrawlingService.fetchByKeyword(keyword);
 
     const news = this.newsRepository.create({
@@ -196,26 +180,11 @@ export class NewsService {
   }> {
     if (articleText.length < 100) return { aiSummary: '', keyword: '' };
 
-    const prompt = `
-    다음 뉴스 기사를 분석해주세요.
-
-    [기사 내용]
-    ${articleText}
-
-    [필수 조건]
-    - 아래 JSON 형식으로만 반환할 것
-    - 마크다운, 설명, 코드블록 일절 금지
-    - keyword는 네이버 뉴스 검색에 사용할 핵심 키워드 1~2개
-
-    {"summary": "10줄 이내 요약 텍스트", "keyword": "핵심 키워드"}
-  `;
-
-    const result = await this.model.generateContent(prompt);
-    const text = result.response.text().trim();
-    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as {
+    const prompt = this.buildNewsPrompt(articleText);
+    const parsed = await this.aiService.generateJson<{
       summary: string;
       keyword: string;
-    };
+    }>(prompt);
 
     return {
       aiSummary: parsed.summary ?? '',
@@ -225,55 +194,8 @@ export class NewsService {
 
   async getNewsTrend(category?: string): Promise<{ content: string }> {
     const prompt = this.buildTrendPrompt(category);
-    const apiKey = this.configService.get<string>('GROQ_API_KEY') ?? '';
-
-    try {
-      const response = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'llama-3.1-8b-instant',
-            max_tokens: 1024,
-            temperature: 0.7,
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorBody = await response.json();
-        console.error(
-          'Groq 응답 에러:',
-          response.status,
-          JSON.stringify(errorBody, null, 2),
-        );
-        throw new InternalServerErrorException(
-          '뉴스 트렌드 조회 중 오류가 발생했습니다.',
-        );
-      }
-
-      const data = (await response.json()) as {
-        choices: { message: { content: string } }[];
-      };
-
-      const content = data.choices[0]?.message?.content ?? '';
-      return { content };
-    } catch (error) {
-      console.error('Groq API 에러:', error);
-      throw new InternalServerErrorException(
-        '뉴스 트렌드 조회 중 오류가 발생했습니다.',
-      );
-    }
+    const content = await this.aiService.generateText(prompt);
+    return { content };
   }
 
   private buildTrendPrompt(category?: string): string {
@@ -304,6 +226,21 @@ export class NewsService {
 - 번호 매기기 없이 * 로만 항목 구분
 - 자연스러운 한국어로 작성
 - 추측이 아닌 실제 이슈 기반으로 작성
-  `.trim();
+    `.trim();
+  }
+
+  private buildNewsPrompt(articleText?: string): string {
+    return `
+${articleText}를 읽고 뉴스를 5줄 내외로 요약하세요.
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{"summary": "요약 내용", "keyword": "핵심 키워드"}
+
+절대 지켜야 할 규칙:
+- JSON 외 다른 텍스트 출력 금지
+- 마크다운 문법(**, ##, --- 등) 사용 금지
+- 자연스러운 한국어로 작성
+- 추측이 아닌 실제 이슈 기반으로 작성
+    `.trim();
   }
 }

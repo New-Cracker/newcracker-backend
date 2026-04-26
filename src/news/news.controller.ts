@@ -1,6 +1,6 @@
 // news/news.controller.ts
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { NewsService } from './news.service';
+import { NewsService } from './services/news.service';
 import { ApiBearerAuth, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { NewsResponseDto } from './dto/news-response.dto';

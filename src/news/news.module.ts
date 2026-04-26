@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { NewsService } from './news.service';
+import { NewsService } from './services/news.service';
 import { NewsController } from './news.controller';
 import { HttpModule } from '@nestjs/axios';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -12,6 +12,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-ioredis-yet';
 import { NewsCacheService } from './services/news-cache.service';
 import { ConfigService } from '@nestjs/config';
+import { AiService } from './services/ai.service';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { ConfigService } from '@nestjs/config';
   providers: [
     NewsService,
     NewsCrawlingService,
+    AiService,
     CompanyService,
     NewsCacheService,
   ],
