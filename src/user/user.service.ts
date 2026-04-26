@@ -4,13 +4,14 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-// import { UpdateUserDto } from './dto/update-user.dto';
+import bcrypt from 'node_modules/bcryptjs';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateUserRequestDto } from './dto/update-user-request.dto';
 import { UpdateUserResponseDto } from './dto/update-user-response.dto';
 import { Category } from 'src/news/entities/enum/category.enum';
+import { UpdatePasswordRequestDto } from './dto/update-password-request.dto';
 
 @Injectable()
 export class UserService {
@@ -92,7 +93,29 @@ export class UserService {
     return UpdateUserResponseDto.from(updatedUser);
   }
 
-  // remove(id: number) {
-  //   return `This action removes a #${id} user`;
-  // }
+  async updatePassword(
+    id: number,
+    dto: UpdatePasswordRequestDto,
+  ): Promise<string> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      dto.currentPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      console.log(dto.currentPassword, user.password);
+      throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(dto.newPassword, saltRounds);
+
+    await this.userRepository.update(id, { password: hashedPassword });
+
+    return '비밀번호가 성공적으로 변경되었습니다.';
+  }
 }

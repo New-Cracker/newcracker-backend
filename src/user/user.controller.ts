@@ -17,6 +17,7 @@ import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ApiDocs } from 'src/common/decorators/swagger.decorator';
 import { UpdateUserResponseDto } from './dto/update-user-response.dto';
+import { UpdatePasswordRequestDto } from './dto/update-password-request.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -37,6 +38,22 @@ export class UserController {
     @CurrentUser() user: JwtPayload,
     @Body() updateUserDto: UpdateUserRequestDto,
   ): Promise<UpdateUserResponseDto> {
-    return this.userService.update(user.sub, updateUserDto);
+    return this.userService.update(Number(user.sub), updateUserDto);
+  }
+
+  @Patch('/me/password')
+  @UseGuards(JwtAuthGuard)
+  @ApiDocs({
+    summary: '사용자 비밀번호 업데이트',
+    description: '사용자 비밀번호를 수정합니다.',
+    successType: UpdateUserResponseDto,
+    isNotFound: true,
+  })
+  updatePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdatePasswordRequestDto,
+  ): Promise<string> {
+    console.log(user.sub);
+    return this.userService.updatePassword(Number(user.sub), dto);
   }
 }
