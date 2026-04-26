@@ -410,4 +410,50 @@ export class NewsCrawlingService {
       return Category.SOCIETY;
     }
   }
+
+  async searchByQuery(query: string): Promise<NewsItem[]> {
+    const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(query)}&display=20&sort=sim`;
+
+    const response = await fetch(url, {
+      headers: {
+        'X-Naver-Client-Id': this.clientId,
+        'X-Naver-Client-Secret': this.clientSecret,
+      },
+    });
+
+    if (!response.ok) {
+      throw new InternalServerErrorException(
+        '네이버 뉴스 검색에 실패했습니다.',
+      );
+    }
+
+    const data = (await response.json()) as { items: NewsItem[] };
+
+    const items = await pLimit(
+      data.items.map((item) => async () => {
+        const [{ thumbnailUrl, companyName }, category] = await Promise.all([
+          this.fetchMetadata(item.link),
+          this.categorizeNews(item.title, item.description), // 카테고리 분류 추가
+        ]);
+        return {
+          ...item,
+          title: this.decodeHtmlEntities(item.title).replace(/<[^>]*>/g, ''),
+          description: this.decodeHtmlEntities(item.description).replace(
+            /<[^>]*>/g,
+            '',
+          ),
+          thumbnailUrl,
+          companyName,
+          category,
+        };
+      }),
+      CONCURRENCY,
+    );
+
+    return items
+      .filter(
+        (r): r is PromiseFulfilledResult<NewsItem> => r.status === 'fulfilled',
+      )
+      .map((r) => r.value);
+  }
 }

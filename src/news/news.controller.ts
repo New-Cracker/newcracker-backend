@@ -14,6 +14,7 @@ import { PaginatedNewsResponseDto } from './dto/pagenatied-news-response.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { NewsTrendQueryDto } from './dto/news-trend-request.dto';
 import { NewsTrendResponseDto } from './dto/news-trend-response.dto';
+import { SearchNewsResponseDto } from './dto/search-news-response.dto';
 
 @ApiTags('news')
 @Controller('news')
@@ -109,5 +110,15 @@ export class NewsController {
     @Query() query: NewsTrendQueryDto,
   ): Promise<NewsTrendResponseDto> {
     return this.newsService.getNewsTrend(query.category);
+  }
+
+  @Get('/search')
+  @ApiDocs({
+    summary: '뉴스 검색',
+    description: '키워드로 뉴스를 검색합니다.',
+    successType: SearchNewsResponseDto,
+  })
+  search(@Query('q') query: string): Promise<SearchNewsResponseDto[]> {
+    return this.newsService.search(query);
   }
 }

@@ -1,5 +1,5 @@
 // news/news.service.ts
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { News } from '../entities/news.entity';
@@ -16,6 +16,7 @@ import { NewsCacheService } from './news-cache.service';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { AiService } from './ai.service';
+import { SearchNewsResponseDto } from '../dto/search-news-response.dto';
 
 const ITEMS_PER_PAGE = 10;
 const RECENT_NEWS_PREFIX = 'recent-news';
@@ -63,18 +64,6 @@ export class NewsService {
       .map((id) => newsMap.get(id))
       .filter((n): n is News => !!n)
       .map((n) => RecentNewsResponseDto.from(n));
-  }
-
-  private async addRecentNews(userId: number, newsId: number): Promise<void> {
-    const key = `${RECENT_NEWS_PREFIX}:${userId}`;
-    const score = Date.now();
-
-    await this.redis
-      .multi()
-      .zadd(key, score, String(newsId))
-      .zremrangebyrank(key, 0, -(MAX_RECENT_COUNT + 1))
-      .expire(key, RECENT_NEWS_TTL)
-      .exec();
   }
 
   async findLatest(category?: string): Promise<NewsResponseDto[]> {
@@ -143,6 +132,51 @@ export class NewsService {
     return NewsDetailResponseDto.from(news!);
   }
 
+  async summarizeAndExtractKeyword(articleText: string): Promise<{
+    aiSummary: string;
+    keyword: string;
+  }> {
+    if (articleText.length < 100) return { aiSummary: '', keyword: '' };
+
+    const prompt = this.buildNewsPrompt(articleText);
+    const parsed = await this.aiService.generateJson<{
+      summary: string;
+      keyword: string;
+    }>(prompt);
+
+    return {
+      aiSummary: parsed.summary ?? '',
+      keyword: parsed.keyword ?? '',
+    };
+  }
+
+  async getNewsTrend(category?: string): Promise<{ content: string }> {
+    const prompt = this.buildTrendPrompt(category);
+    const content = await this.aiService.generateText(prompt);
+    return { content };
+  }
+
+  async search(query: string): Promise<SearchNewsResponseDto[]> {
+    if (!query?.trim()) {
+      throw new BadRequestException('검색어를 입력해주세요.');
+    }
+
+    const items = await this.newsCrawlingService.searchByQuery(query);
+    return items.map((item) => SearchNewsResponseDto.from(item));
+  }
+
+  private async addRecentNews(userId: number, newsId: number): Promise<void> {
+    const key = `${RECENT_NEWS_PREFIX}:${userId}`;
+    const score = Date.now();
+
+    await this.redis
+      .multi()
+      .zadd(key, score, String(newsId))
+      .zremrangebyrank(key, 0, -(MAX_RECENT_COUNT + 1))
+      .expire(key, RECENT_NEWS_TTL)
+      .exec();
+  }
+
   private async save(
     dto: NewsDetailRequestDto,
   ): Promise<NewsDetailResponseDto> {
@@ -172,30 +206,6 @@ export class NewsService {
 
     const savedNews = await this.newsRepository.save(news);
     return NewsDetailResponseDto.from({ ...savedNews, company });
-  }
-
-  async summarizeAndExtractKeyword(articleText: string): Promise<{
-    aiSummary: string;
-    keyword: string;
-  }> {
-    if (articleText.length < 100) return { aiSummary: '', keyword: '' };
-
-    const prompt = this.buildNewsPrompt(articleText);
-    const parsed = await this.aiService.generateJson<{
-      summary: string;
-      keyword: string;
-    }>(prompt);
-
-    return {
-      aiSummary: parsed.summary ?? '',
-      keyword: parsed.keyword ?? '',
-    };
-  }
-
-  async getNewsTrend(category?: string): Promise<{ content: string }> {
-    const prompt = this.buildTrendPrompt(category);
-    const content = await this.aiService.generateText(prompt);
-    return { content };
   }
 
   private buildTrendPrompt(category?: string): string {
