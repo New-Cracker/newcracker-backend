@@ -17,13 +17,13 @@ export class News {
   @Column({ nullable: false })
   title: string;
 
-  @Column({ nullable: false, name: 'publication_date' })
+  @Column({ nullable: true, name: 'publication_date' })
   publicationDate: Date;
 
   @Column({
     type: 'varchar',
     length: 500,
-    nullable: false,
+    nullable: true,
     name: 'thumbnail_url',
   })
   thumbnailUrl: string;

@@ -15,7 +15,7 @@ export class Company {
   @Column({ unique: true, nullable: false })
   name: string;
 
-  @Column({ nullable: false, name: 'homepage_url' })
+  @Column({ nullable: true, name: 'homepage_url' })
   homepageUrl: string;
 
   @CreateDateColumn({ name: 'created_at' })
