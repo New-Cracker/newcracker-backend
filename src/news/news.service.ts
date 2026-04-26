@@ -237,7 +237,7 @@ export class NewsService {
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama-3.1-8b-instant',
             max_tokens: 1024,
             temperature: 0.7,
             messages: [
