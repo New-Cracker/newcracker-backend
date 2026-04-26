@@ -57,6 +57,6 @@ export class News {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToOne(() => Company, (company) => company.news)
-  company: Company;
+  @ManyToOne(() => Company, (company) => company.news, { nullable: true })
+  company: Company | null;
 }
