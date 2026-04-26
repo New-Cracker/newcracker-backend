@@ -3,6 +3,7 @@ import { Category } from 'src/news/entities/enum/category.enum';
 import {
   BaseEntity,
   Column,
+  CreateDateColumn,
   Entity,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -30,4 +31,7 @@ export class User extends BaseEntity {
 
   @OneToOne(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshToken: RefreshToken;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

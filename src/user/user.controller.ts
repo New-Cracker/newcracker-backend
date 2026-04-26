@@ -5,6 +5,8 @@ import {
   Body,
   Patch,
   UseGuards,
+  Put,
+  Get,
   // Patch,
   // Param,
   // Delete,
@@ -18,6 +20,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ApiDocs } from 'src/common/decorators/swagger.decorator';
 import { UpdateUserResponseDto } from './dto/update-user-response.dto';
 import { UpdatePasswordRequestDto } from './dto/update-password-request.dto';
+import { UserDetailResponseDto } from './dto/user-detail-response.dto';
 
 @Controller('user')
 @ApiTags('user')
@@ -41,12 +44,11 @@ export class UserController {
     return this.userService.update(Number(user.sub), updateUserDto);
   }
 
-  @Patch('/me/password')
+  @Put('/me/password')
   @UseGuards(JwtAuthGuard)
   @ApiDocs({
     summary: '사용자 비밀번호 업데이트',
     description: '사용자 비밀번호를 수정합니다.',
-    successType: UpdateUserResponseDto,
     isNotFound: true,
   })
   updatePassword(
@@ -55,5 +57,18 @@ export class UserController {
   ): Promise<string> {
     console.log(user.sub);
     return this.userService.updatePassword(Number(user.sub), dto);
+  }
+
+  @Get('/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiDocs({
+    summary: '사용자 정보 조회',
+    description: '사용자 정보를 조회합니다.',
+    successType: UserDetailResponseDto,
+    isNotFound: true,
+  })
+  userDetail(@CurrentUser() user: JwtPayload): Promise<UserDetailResponseDto> {
+    console.log(user.sub);
+    return this.userService.userDetail(Number(user.sub));
   }
 }

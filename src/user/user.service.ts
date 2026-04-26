@@ -12,6 +12,7 @@ import { UpdateUserRequestDto } from './dto/update-user-request.dto';
 import { UpdateUserResponseDto } from './dto/update-user-response.dto';
 import { Category } from 'src/news/entities/enum/category.enum';
 import { UpdatePasswordRequestDto } from './dto/update-password-request.dto';
+import { UserDetailResponseDto } from './dto/user-detail-response.dto';
 
 @Injectable()
 export class UserService {
@@ -81,6 +82,18 @@ export class UserService {
     return user;
   }
 
+  async userDetail(id: number): Promise<UserDetailResponseDto> {
+    const user = await this.findById(id);
+
+    return {
+      userId: user.id,
+      email: user.email,
+      category: user.category,
+      username: user.username,
+      createdAt: user.createdAt,
+    };
+  }
+
   async update(
     id: number,
     updateUserDto: UpdateUserRequestDto,
@@ -98,9 +111,6 @@ export class UserService {
     dto: UpdatePasswordRequestDto,
   ): Promise<string> {
     const user = await this.findById(id);
-    if (!user) {
-      throw new NotFoundException('사용자를 찾을 수 없습니다.');
-    }
 
     const isPasswordValid = await bcrypt.compare(
       dto.currentPassword,
