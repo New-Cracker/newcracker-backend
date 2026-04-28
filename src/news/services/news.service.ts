@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { AiService } from './ai.service';
 import { SearchNewsResponseDto } from '../dto/search-news-response.dto';
+import { Company } from 'src/company/entities/company.entity';
 
 const ITEMS_PER_PAGE = 10;
 const RECENT_NEWS_PREFIX = 'recent-news';
@@ -180,10 +181,13 @@ export class NewsService {
   private async save(
     dto: NewsDetailRequestDto,
   ): Promise<NewsDetailResponseDto> {
-    const company = await this.companyService.findOrCreate(
-      dto.companyName,
-      dto.link,
-    );
+    let company: Company | null = null;
+    if (dto.companyName) {
+      company = await this.companyService.findOrCreate(
+        dto.companyName,
+        dto.link,
+      );
+    }
 
     const articleText = await this.newsCrawlingService.fetchArticleText(
       dto.link,
